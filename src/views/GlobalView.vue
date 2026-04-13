@@ -7,7 +7,9 @@ import SkillCompareTable from '@/components/common/SkillCompareTable.vue'
 import SkillPreviewModal from '@/components/common/SkillPreviewModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import type { SkillComparison } from '@/types'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const skillStore = useSkillStore()
 const configStore = useConfigStore()
 const message = useMessage()
@@ -16,13 +18,13 @@ const searchText = ref('')
 const statusFilter = ref<string | null>(null)
 const previewSkill = ref<string | null>(null)
 
-const statusOptions = [
-  { label: '全部', value: 'all' },
-  { label: '一致', value: 'Same' },
-  { label: '可更新', value: 'Outdated' },
-  { label: '仅本地', value: 'LocalOnly' },
-  { label: '仅远端', value: 'RemoteOnly' },
-]
+const statusOptions = computed(() => [
+  { label: t('status.all'), value: 'all' },
+  { label: t('status.same'), value: 'Same' },
+  { label: t('status.outdated'), value: 'Outdated' },
+  { label: t('status.localOnly'), value: 'LocalOnly' },
+  { label: t('status.remoteOnly'), value: 'RemoteOnly' },
+])
 
 const filtered = computed(() => {
   let list: SkillComparison[] = skillStore.globalComparisons
@@ -51,9 +53,9 @@ async function handleSync() {
   try {
     await skillStore.syncRemote()
     await skillStore.loadGlobalSkills()
-    message.success('远端同步完成')
+    message.success(t('global.syncComplete'))
   } catch (e: any) {
-    message.error('同步失败: ' + e)
+    message.error(t('global.syncFailed', { error: e }))
   }
 }
 
@@ -61,9 +63,9 @@ async function handleInstall(name: string) {
   try {
     await skillStore.installSkill(name, 'global')
     await skillStore.loadGlobalSkills()
-    message.success(`${name} 安装成功`)
+    message.success(t('global.installSuccess', { name }))
   } catch (e: any) {
-    message.error('安装失败: ' + e)
+    message.error(t('global.installFailed', { error: e }))
   }
 }
 
@@ -71,9 +73,9 @@ async function handleUpdate(name: string) {
   try {
     await skillStore.updateSkill(name, 'global')
     await skillStore.loadGlobalSkills()
-    message.success(`${name} 更新成功`)
+    message.success(t('global.updateSuccess', { name }))
   } catch (e: any) {
-    message.error('更新失败: ' + e)
+    message.error(t('global.updateFailed', { error: e }))
   }
 }
 
@@ -81,9 +83,9 @@ async function handleUninstall(name: string) {
   try {
     await skillStore.uninstallSkill(name, 'global')
     await skillStore.loadGlobalSkills()
-    message.success(`${name} 已卸载`)
+    message.success(t('global.uninstallSuccess', { name }))
   } catch (e: any) {
-    message.error('卸载失败: ' + e)
+    message.error(t('global.uninstallFailed', { error: e }))
   }
 }
 
@@ -92,15 +94,15 @@ async function handleBatchUpdate() {
     .filter((s) => s.status === 'Outdated')
     .map((s) => s.name)
   if (outdated.length === 0) {
-    message.info('没有需要更新的 skill')
+    message.info(t('global.noUpdatesNeeded'))
     return
   }
   try {
     const results = await skillStore.batchUpdate(outdated, 'global')
     await skillStore.loadGlobalSkills()
-    message.success(`批量更新完成: ${results.join(', ')}`)
+    message.success(t('global.batchUpdateComplete', { names: results.join(', ') }))
   } catch (e: any) {
-    message.error('批量更新失败: ' + e)
+    message.error(t('global.batchUpdateFailed', { error: e }))
   }
 }
 
@@ -122,30 +124,30 @@ onMounted(async () => {
   <div class="global-view">
     <div class="sticky-header">
       <div class="page-header">
-        <h1>全局 Skill 管理</h1>
+        <h1>{{ t('global.title') }}</h1>
         <p class="header-path">
-          {{ configStore.getActiveDisplayName() }} 全局路径: {{ configStore.getGlobalPath() || '-' }}
+          {{ t('global.globalPath', { agent: configStore.getActiveDisplayName(), path: configStore.getGlobalPath() || '-' }) }}
         </p>
       </div>
       <div class="stats-bar">
-        <span>共 {{ stats.total }} 个</span>
-        <span class="stat-item stat-same">一致: {{ stats.same }}</span>
-        <span class="stat-item stat-outdated">可更新: {{ stats.outdated }}</span>
-        <span class="stat-item stat-local">仅本地: {{ stats.localOnly }}</span>
-        <span class="stat-item stat-remote">仅远端: {{ stats.remoteOnly }}</span>
+        <span>{{ t('stats.total', { count: stats.total }) }}</span>
+        <span class="stat-item stat-same">{{ t('stats.same', { count: stats.same }) }}</span>
+        <span class="stat-item stat-outdated">{{ t('stats.outdated', { count: stats.outdated }) }}</span>
+        <span class="stat-item stat-local">{{ t('stats.localOnly', { count: stats.localOnly }) }}</span>
+        <span class="stat-item stat-remote">{{ t('stats.remoteOnly', { count: stats.remoteOnly }) }}</span>
       </div>
       <div class="toolbar">
         <NSpace>
           <NButton type="primary" :loading="skillStore.syncing" @click="handleSync">
-            同步远端
+            {{ t('common.syncRemote') }}
           </NButton>
           <NButton :disabled="stats.outdated === 0" @click="handleBatchUpdate">
-            全部更新 ({{ stats.outdated }})
+            {{ t('global.updateAll', { count: stats.outdated }) }}
           </NButton>
         </NSpace>
         <NSpace class="filters">
-          <NInput v-model:value="searchText" placeholder="搜索..." clearable style="width: 160px" />
-          <NSelect v-model:value="statusFilter" :options="statusOptions" placeholder="状态" clearable style="width: 110px" />
+          <NInput v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
+          <NSelect v-model:value="statusFilter" :options="statusOptions" :placeholder="t('status.status')" clearable style="width: 110px" />
         </NSpace>
       </div>
     </div>
@@ -160,7 +162,7 @@ onMounted(async () => {
         @uninstall="handleUninstall"
         @preview="handlePreview"
       />
-      <EmptyState v-else title="暂无 Skill" description="点击「同步远端」从远程仓库拉取 skill 列表" />
+      <EmptyState v-else :title="t('global.emptyTitle')" :description="t('global.emptyDesc')" />
     </NSpin>
 
     <SkillPreviewModal

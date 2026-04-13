@@ -8,7 +8,9 @@ import { open } from '@tauri-apps/plugin-dialog'
 import SkillCompareTable from '@/components/common/SkillCompareTable.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import type { SkillComparison } from '@/types'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const skillStore = useSkillStore()
 const configStore = useConfigStore()
 const projectStore = useProjectStore()
@@ -52,7 +54,7 @@ async function loadProjectSkills() {
   try {
     await skillStore.loadProjectSkills(projectStore.projectPath)
   } catch (e: any) {
-    message.error('加载失败: ' + e)
+    message.error(t('project.loadFailed', { error: e }))
   }
 }
 
@@ -60,9 +62,9 @@ async function handleSync() {
   try {
     await skillStore.syncRemote()
     await loadProjectSkills()
-    message.success('远端同步完成')
+    message.success(t('global.syncComplete'))
   } catch (e: any) {
-    message.error('同步失败: ' + e)
+    message.error(t('global.syncFailed', { error: e }))
   }
 }
 
@@ -71,9 +73,9 @@ async function handleInstall(name: string) {
   try {
     await skillStore.installSkill(name, projectStore.projectPath)
     await loadProjectSkills()
-    message.success(`${name} 安装成功`)
+    message.success(t('global.installSuccess', { name }))
   } catch (e: any) {
-    message.error('安装失败: ' + e)
+    message.error(t('global.installFailed', { error: e }))
   }
 }
 
@@ -82,9 +84,9 @@ async function handleUpdate(name: string) {
   try {
     await skillStore.updateSkill(name, projectStore.projectPath)
     await loadProjectSkills()
-    message.success(`${name} 更新成功`)
+    message.success(t('global.updateSuccess', { name }))
   } catch (e: any) {
-    message.error('更新失败: ' + e)
+    message.error(t('global.updateFailed', { error: e }))
   }
 }
 
@@ -93,9 +95,9 @@ async function handleUninstall(name: string) {
   try {
     await skillStore.uninstallSkill(name, projectStore.projectPath)
     await loadProjectSkills()
-    message.success(`${name} 已卸载`)
+    message.success(t('global.uninstallSuccess', { name }))
   } catch (e: any) {
-    message.error('卸载失败: ' + e)
+    message.error(t('global.uninstallFailed', { error: e }))
   }
 }
 
@@ -112,30 +114,30 @@ onMounted(async () => {
 <template>
   <div class="project-view">
     <div class="page-header">
-      <h1>项目 Skill 管理</h1>
+      <h1>{{ t('project.skillTitle') }}</h1>
     </div>
 
     <div class="project-selector">
       <NSpace align="center">
-        <NInput :value="projectStore.projectPath" placeholder="请选择项目路径..." readonly style="width: 400px" />
-        <NButton type="primary" @click="handleSelectProject">浏览...</NButton>
+        <NInput :value="projectStore.projectPath" :placeholder="t('project.selectPathPlaceholder')" readonly style="width: 400px" />
+        <NButton type="primary" @click="handleSelectProject">{{ t('common.browse') }}</NButton>
         <NButton :disabled="!projectStore.projectPath" :loading="skillStore.syncing" @click="handleSync">
-          同步远端
+          {{ t('common.syncRemote') }}
         </NButton>
       </NSpace>
     </div>
 
     <template v-if="projectStore.projectPath">
       <div class="stats-bar">
-        <span>共 {{ stats.total }} 个</span>
-        <span class="stat-item stat-same">一致: {{ stats.same }}</span>
-        <span class="stat-item stat-outdated">可更新: {{ stats.outdated }}</span>
-        <span class="stat-item stat-local">仅本地: {{ stats.localOnly }}</span>
-        <span class="stat-item stat-remote">仅远端: {{ stats.remoteOnly }}</span>
+        <span>{{ t('stats.total', { count: stats.total }) }}</span>
+        <span class="stat-item stat-same">{{ t('stats.same', { count: stats.same }) }}</span>
+        <span class="stat-item stat-outdated">{{ t('stats.outdated', { count: stats.outdated }) }}</span>
+        <span class="stat-item stat-local">{{ t('stats.localOnly', { count: stats.localOnly }) }}</span>
+        <span class="stat-item stat-remote">{{ t('stats.remoteOnly', { count: stats.remoteOnly }) }}</span>
       </div>
 
       <div class="toolbar">
-        <NInput v-model:value="searchText" placeholder="搜索..." clearable style="width: 160px" />
+        <NInput v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
       </div>
 
       <NSpin :show="skillStore.loading">
@@ -147,11 +149,11 @@ onMounted(async () => {
           @update="handleUpdate"
           @uninstall="handleUninstall"
         />
-        <EmptyState v-else title="暂无 Skill" description="点击「同步远端」获取可用 skill 列表" />
+        <EmptyState v-else :title="t('project.emptySkillTitle')" :description="t('project.emptySkillDesc')" />
       </NSpin>
     </template>
 
-    <EmptyState v-else title="请选择项目路径" description="点击上方「浏览...」按钮选择一个项目目录" />
+    <EmptyState v-else :title="t('project.selectPathTitle')" :description="t('project.selectPathDesc')" />
   </div>
 </template>
 

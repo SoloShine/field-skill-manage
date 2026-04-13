@@ -9,7 +9,9 @@ import SkillCompareTable from '@/components/common/SkillCompareTable.vue'
 import SkillPreviewModal from '@/components/common/SkillPreviewModal.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import type { SkillComparison } from '@/types'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const router = useRouter()
 const skillStore = useSkillStore()
 const configStore = useConfigStore()
@@ -47,7 +49,7 @@ async function loadProjectSkills() {
   try {
     await skillStore.loadProjectSkills(projectStore.projectPath)
   } catch (e: any) {
-    message.error('加载失败: ' + e)
+    message.error(t('project.loadFailed', { error: e }))
   }
 }
 
@@ -55,9 +57,9 @@ async function handleSync() {
   try {
     await skillStore.syncRemote()
     await loadProjectSkills()
-    message.success('远端同步完成')
+    message.success(t('global.syncComplete'))
   } catch (e: any) {
-    message.error('同步失败: ' + e)
+    message.error(t('global.syncFailed', { error: e }))
   }
 }
 
@@ -66,9 +68,9 @@ async function handleInstall(name: string) {
   try {
     await skillStore.installSkill(name, projectStore.projectPath)
     await loadProjectSkills()
-    message.success(`${name} 安装成功`)
+    message.success(t('global.installSuccess', { name }))
   } catch (e: any) {
-    message.error('安装失败: ' + e)
+    message.error(t('global.installFailed', { error: e }))
   }
 }
 
@@ -77,9 +79,9 @@ async function handleUpdate(name: string) {
   try {
     await skillStore.updateSkill(name, projectStore.projectPath)
     await loadProjectSkills()
-    message.success(`${name} 更新成功`)
+    message.success(t('global.updateSuccess', { name }))
   } catch (e: any) {
-    message.error('更新失败: ' + e)
+    message.error(t('global.updateFailed', { error: e }))
   }
 }
 
@@ -88,9 +90,9 @@ async function handleUninstall(name: string) {
   try {
     await skillStore.uninstallSkill(name, projectStore.projectPath)
     await loadProjectSkills()
-    message.success(`${name} 已卸载`)
+    message.success(t('global.uninstallSuccess', { name }))
   } catch (e: any) {
-    message.error('卸载失败: ' + e)
+    message.error(t('global.uninstallFailed', { error: e }))
   }
 }
 
@@ -111,21 +113,21 @@ onMounted(async () => {
     <div class="sticky-header">
       <div class="page-header">
         <h1>
-          <NButton text size="small" @click="router.push({ name: 'project' })">&larr; 返回</NButton>
-          项目详情
+          <NButton text size="small" @click="router.push({ name: 'project' })">&larr; {{ t('common.back') }}</NButton>
+          {{ t('project.detailTitle') }}
         </h1>
       </div>
       <p class="header-path">{{ projectStore.projectPath }}</p>
       <div class="stats-bar">
-        <span>共 {{ stats.total }} 个</span>
-        <span class="stat-item stat-same">一致: {{ stats.same }}</span>
-        <span class="stat-item stat-outdated">可更新: {{ stats.outdated }}</span>
-        <span class="stat-item stat-local">仅本地: {{ stats.localOnly }}</span>
-        <span class="stat-item stat-remote">仅远端: {{ stats.remoteOnly }}</span>
+        <span>{{ t('stats.total', { count: stats.total }) }}</span>
+        <span class="stat-item stat-same">{{ t('stats.same', { count: stats.same }) }}</span>
+        <span class="stat-item stat-outdated">{{ t('stats.outdated', { count: stats.outdated }) }}</span>
+        <span class="stat-item stat-local">{{ t('stats.localOnly', { count: stats.localOnly }) }}</span>
+        <span class="stat-item stat-remote">{{ t('stats.remoteOnly', { count: stats.remoteOnly }) }}</span>
       </div>
       <div class="toolbar">
-        <NButton :loading="skillStore.syncing" @click="handleSync">同步远端</NButton>
-        <NInput v-model:value="searchText" placeholder="搜索..." clearable style="width: 160px" />
+        <NButton :loading="skillStore.syncing" @click="handleSync">{{ t('common.syncRemote') }}</NButton>
+        <NInput v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
       </div>
     </div>
 
@@ -139,7 +141,7 @@ onMounted(async () => {
         @uninstall="handleUninstall"
         @preview="handlePreview"
       />
-      <EmptyState v-else title="暂无 Skill" description="点击「同步远端」获取可用 skill 列表" />
+      <EmptyState v-else :title="t('project.emptySkillTitle')" :description="t('project.emptySkillDesc')" />
     </NSpin>
 
     <SkillPreviewModal

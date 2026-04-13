@@ -8,8 +8,11 @@ import {
   NText,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
-import { h } from 'vue'
+import { h, computed } from 'vue'
 import type { SkillComparison, SkillMeta, ComparisonStatus } from '@/types'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   comparisons: SkillComparison[]
@@ -29,15 +32,15 @@ function truncateHash(hash?: string): string {
 }
 
 function statusTag(status: ComparisonStatus) {
-  const map: Record<ComparisonStatus, { label: string; type: 'success' | 'warning' | 'info' | 'error' | 'default' }> = {
-    Same: { label: '一致', type: 'success' },
-    Outdated: { label: '可更新', type: 'warning' },
-    LocalOnly: { label: '仅本地', type: 'info' },
-    RemoteOnly: { label: '仅远端', type: 'default' },
-    Unknown: { label: '未知', type: 'error' },
+  const map: Record<ComparisonStatus, { labelKey: string; type: 'success' | 'warning' | 'info' | 'error' | 'default' }> = {
+    Same: { labelKey: 'status.same', type: 'success' },
+    Outdated: { labelKey: 'status.outdated', type: 'warning' },
+    LocalOnly: { labelKey: 'status.localOnly', type: 'info' },
+    RemoteOnly: { labelKey: 'status.remoteOnly', type: 'default' },
+    Unknown: { labelKey: 'status.unknown', type: 'error' },
   }
   const info = map[status]
-  return h(NTag, { type: info.type, size: 'small', round: true }, { default: () => info.label })
+  return h(NTag, { type: info.type, size: 'small', round: true }, { default: () => t(info.labelKey) })
 }
 
 function versionCell(meta: SkillMeta | null) {
@@ -49,8 +52,7 @@ function hashCell(meta: SkillMeta | null) {
   if (!meta) return h(NText, { depth: 3 }, () => '-')
   const hash = meta.checksum?.value
   if (!hash) {
-    // No checksum, show "(无)"
-    return h(NText, { depth: 3, style: 'font-size: 12px' }, () => '(无)')
+    return h(NText, { depth: 3, style: 'font-size: 12px' }, () => t('table.none'))
   }
   return h(NTooltip, {}, {
     trigger: () => h(NText, { style: 'font-family: monospace; font-size: 12px; cursor: pointer' }, () => truncateHash(hash)),
@@ -79,93 +81,93 @@ function actionsCell(row: SkillComparison) {
   // Preview button always available (shows remote if no local)
   if (row.local || row.remote) {
     buttons.push(
-      h(NButton, { size: 'tiny', quaternary: true, onClick: () => emit('preview', row.name) }, () => '预览')
+      h(NButton, { size: 'tiny', quaternary: true, onClick: () => emit('preview', row.name) }, () => t('common.preview'))
     )
   }
 
   if (row.status === 'RemoteOnly') {
     buttons.push(
-      h(NButton, { type: 'primary', size: 'tiny', onClick: () => emit('install', row.name, props.target) }, () => '安装')
+      h(NButton, { type: 'primary', size: 'tiny', onClick: () => emit('install', row.name, props.target) }, () => t('common.install'))
     )
   }
 
   if (row.status === 'Outdated') {
     buttons.push(
-      h(NButton, { type: 'warning', size: 'tiny', onClick: () => emit('update', row.name, props.target) }, () => '更新')
+      h(NButton, { type: 'warning', size: 'tiny', onClick: () => emit('update', row.name, props.target) }, () => t('common.update'))
     )
   }
 
   if (row.local) {
     if (row.status === 'Same') {
       buttons.push(
-        h(NButton, { size: 'tiny', onClick: () => emit('update', row.name, props.target) }, () => '重装')
+        h(NButton, { size: 'tiny', onClick: () => emit('update', row.name, props.target) }, () => t('common.reinstallShort'))
       )
     }
     buttons.push(
-      h(NButton, { size: 'tiny', type: 'error', ghost: true, onClick: () => emit('uninstall', row.name, props.target) }, () => '卸载')
+      h(NButton, { size: 'tiny', type: 'error', ghost: true, onClick: () => emit('uninstall', row.name, props.target) }, () => t('common.uninstall'))
     )
   }
 
   return h(NSpace, { size: 4, align: 'center' }, () => buttons)
 }
 
-const columns: DataTableColumns<SkillComparison> = [
+const columns = computed<DataTableColumns<SkillComparison>>(() => [
   {
-    title: '状态',
+    title: t('table.status'),
     key: 'status',
     width: 80,
     render: (row) => statusTag(row.status),
   },
   {
-    title: 'Skill 名称',
+    title: t('table.skillName'),
     key: 'name',
     width: 160,
     render: (row) => h(NText, { strong: true }, () => row.name),
   },
   {
-    title: '本地版本',
+    title: t('table.localVersion'),
     key: 'local_version',
     width: 90,
     render: (row) => versionCell(row.local),
   },
   {
-    title: '远端版本',
+    title: t('table.remoteVersion'),
     key: 'remote_version',
     width: 90,
     render: (row) => versionCell(row.remote),
   },
   {
-    title: '本地哈希',
+    title: t('table.localHash'),
     key: 'local_hash',
     width: 100,
     render: (row) => hashCell(row.local),
   },
   {
-    title: '远端哈希',
+    title: t('table.remoteHash'),
     key: 'remote_hash',
     width: 100,
     render: (row) => hashCell(row.remote),
   },
   {
-    title: '更新时间',
+    title: t('table.updatedTime'),
     key: 'updated_at',
     width: 95,
     render: (row) => timeCell(row.remote || row.local),
   },
   {
-    title: '说明',
+    title: t('table.description'),
     key: 'description',
     ellipsis: { tooltip: true },
     render: (row) => descCell(row.remote || row.local),
   },
   {
-    title: '操作',
+    title: t('table.actions'),
     key: 'actions',
     width: 180,
     fixed: 'right',
     render: (row) => actionsCell(row),
   },
-]
+])
 </script>
 
 <template>

@@ -4,6 +4,9 @@ import { NModal, NTree, NSpin, NEmpty, NText, NDescriptions, NDescriptionsItem, 
 import type { TreeOption } from 'naive-ui'
 import { invoke } from '@tauri-apps/api/core'
 import { marked } from 'marked'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 interface FileNode {
   name: string
@@ -65,12 +68,12 @@ function parseFrontmatter(content: string): { fm: FrontmatterData | null; body: 
   }
 
   for (const line of yaml.split('\n')) {
-    const t = line.trim()
-    if (!t || t.startsWith('#')) continue
-    const colon = t.indexOf(':')
+    const trimmedLine = line.trim()
+    if (!trimmedLine || trimmedLine.startsWith('#')) continue
+    const colon = trimmedLine.indexOf(':')
     if (colon === -1) continue
-    const key = t.slice(0, colon).trim()
-    let val = t.slice(colon + 1).trim()
+    const key = trimmedLine.slice(0, colon).trim()
+    let val = trimmedLine.slice(colon + 1).trim()
 
     // Handle list values like [a, b, c]
     if (val.startsWith('[') && val.endsWith(']')) {
@@ -113,7 +116,7 @@ const renderedContent = computed(() => {
     const cleaned = stripFrontmatter(rawContent.value)
     return marked(cleaned) as string
   } catch {
-    return '<p>渲染失败</p>'
+    return `<p>${t('preview.renderFailed')}</p>`
   }
 })
 
@@ -167,7 +170,7 @@ async function loadFile(path: string) {
       frontmatter.value = null
     }
   } catch (e: any) {
-    rawContent.value = `加载失败: ${e}`
+    rawContent.value = t('preview.loadFailed', { error: e })
     frontmatter.value = null
   } finally {
     loading.value = false
@@ -195,7 +198,7 @@ onMounted(async () => {
   <NModal :show="true" preset="card" :title="skillName" style="width: 800px; max-height: 80vh" @update:show="emit('close')">
     <div class="preview-layout">
       <div class="file-tree-panel">
-        <NText depth="3" style="font-size: 12px; padding: 8px; display: block">文件列表</NText>
+        <NText depth="3" style="font-size: 12px; padding: 8px; display: block">{{ t('preview.fileList') }}</NText>
         <NSpin :show="treeLoading" size="small">
           <NTree
             v-if="treeOptions.length > 0"
@@ -207,7 +210,7 @@ onMounted(async () => {
             @update:selected-keys="handleFileSelect"
             style="font-size: 13px"
           />
-          <NEmpty v-else description="无文件" size="small" />
+          <NEmpty v-else :description="t('preview.noFiles')" size="small" />
         </NSpin>
       </div>
       <div class="file-content-panel">
@@ -219,24 +222,24 @@ onMounted(async () => {
             <!-- Frontmatter metadata card for SKILL.md -->
             <div v-if="frontmatter" class="fm-card">
               <NDescriptions label-placement="left" bordered size="small" :column="1">
-                <NDescriptionsItem label="名称">
+                <NDescriptionsItem :label="t('preview.name')">
                   <NText strong>{{ frontmatter.name }}</NText>
                 </NDescriptionsItem>
-                <NDescriptionsItem label="版本">
+                <NDescriptionsItem :label="t('preview.version')">
                   <NText code>{{ frontmatter.version }}</NText>
                 </NDescriptionsItem>
-                <NDescriptionsItem label="说明">
+                <NDescriptionsItem :label="t('preview.description')">
                   {{ frontmatter.description }}
                 </NDescriptionsItem>
-                <NDescriptionsItem v-if="frontmatter.tags.length > 0" label="标签">
+                <NDescriptionsItem v-if="frontmatter.tags.length > 0" :label="t('preview.tags')">
                   <NTag v-for="tag in frontmatter.tags" :key="tag" size="small" round type="info" style="margin-right: 4px">
                     {{ tag }}
                   </NTag>
                 </NDescriptionsItem>
-                <NDescriptionsItem v-if="frontmatter.license" label="许可证">
+                <NDescriptionsItem v-if="frontmatter.license" :label="t('preview.license')">
                   {{ frontmatter.license }}
                 </NDescriptionsItem>
-                <NDescriptionsItem v-if="frontmatter.updated_at" label="更新时间">
+                <NDescriptionsItem v-if="frontmatter.updated_at" :label="t('preview.updatedAt')">
                   {{ frontmatter.updated_at }}
                 </NDescriptionsItem>
                 <NDescriptionsItem v-for="(val, key) in frontmatter.extra" :key="key" :label="key">
@@ -248,7 +251,7 @@ onMounted(async () => {
             <div v-if="isMarkdown && renderedContent" class="md-content" v-html="renderedContent" />
             <!-- Raw content for non-markdown -->
             <pre v-else-if="rawContent && !isMarkdown" class="raw-content">{{ rawContent }}</pre>
-            <NEmpty v-else-if="!isMarkdown && !rawContent" description="选择文件查看内容" size="small" />
+            <NEmpty v-else-if="!isMarkdown && !rawContent" :description="t('preview.selectFile')" size="small" />
           </NSpin>
         </div>
       </div>

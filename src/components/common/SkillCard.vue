@@ -2,6 +2,9 @@
 import { NCard, NTag, NButton, NSpace, NText } from 'naive-ui'
 import type { SkillMeta } from '@/types'
 import VersionBadge from './VersionBadge.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   skill: SkillMeta
@@ -45,7 +48,7 @@ function truncateHash(hash?: string): string {
       </div>
       <div v-if="skill.updated_at" class="skill-time">
         <NText depth="3" style="font-size: 11px">
-          更新: {{ skill.updated_at }}
+          {{ t('skillCard.updated', { time: skill.updated_at }) }}
         </NText>
       </div>
     </div>
@@ -57,7 +60,7 @@ function truncateHash(hash?: string): string {
           size="small"
           @click="emit('install', skill.name, target)"
         >
-          安装
+          {{ t('common.install') }}
         </NButton>
         <NButton
           v-if="skill.install_status === 'outdated'"
@@ -65,14 +68,14 @@ function truncateHash(hash?: string): string {
           size="small"
           @click="emit('update', skill.name, target)"
         >
-          更新
+          {{ t('common.update') }}
         </NButton>
         <NButton
           v-if="skill.install_status === 'installed' || skill.install_status === 'outdated'"
           size="small"
           @click="emit('uninstall', skill.name, target)"
         >
-          卸载
+          {{ t('common.uninstall') }}
         </NButton>
         <NButton
           v-if="skill.install_status === 'installed'"
@@ -81,7 +84,7 @@ function truncateHash(hash?: string): string {
           ghost
           @click="emit('update', skill.name, target)"
         >
-          重新安装
+          {{ t('common.reinstall') }}
         </NButton>
       </NSpace>
     </template>

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import Sidebar from './Sidebar.vue'
-import { NConfigProvider, NMessageProvider, zhCN, dateZhCN } from 'naive-ui'
+import { NConfigProvider, NMessageProvider } from 'naive-ui'
+import { useLocale } from '@/i18n/useLocale'
+
+const { naiveLocale, naiveDateLocale } = useLocale()
 </script>
 
 <template>
-  <NConfigProvider :locale="zhCN" :date-locale="dateZhCN">
+  <NConfigProvider :locale="naiveLocale" :date-locale="naiveDateLocale">
     <NMessageProvider>
       <div class="app-layout">
         <Sidebar />

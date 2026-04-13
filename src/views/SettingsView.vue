@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
 import {
   NCard,
   NForm,
@@ -12,12 +12,19 @@ import {
   NPopconfirm,
   NTag,
   NText,
+  NCollapse,
+  NCollapseItem,
   useMessage,
 } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
+import { useUpdateStore } from '@/stores/update'
 import type { AppConfig } from '@/types'
+import { useI18n } from 'vue-i18n'
+import { open } from '@tauri-apps/plugin-shell'
 
+const { t } = useI18n()
 const configStore = useConfigStore()
+const updateStore = useUpdateStore()
 const message = useMessage()
 
 const form = reactive<AppConfig>({
@@ -49,9 +56,9 @@ const builtInAgents = [
 async function handleSave() {
   try {
     await configStore.saveConfig({ ...form })
-    message.success('配置已保存')
+    message.success(t('settings.saveSuccess'))
   } catch (e: any) {
-    message.error('保存失败: ' + e)
+    message.error(t('settings.saveFailed', { error: e }))
   }
 }
 
@@ -59,15 +66,15 @@ async function handleReset() {
   try {
     await configStore.loadConfig()
     Object.assign(form, JSON.parse(JSON.stringify(configStore.config)))
-    message.info('已重置为当前配置')
+    message.info(t('settings.resetSuccess'))
   } catch (e: any) {
-    message.error('重置失败: ' + e)
+    message.error(t('settings.resetFailed', { error: e }))
   }
 }
 
 async function handleAddCustom() {
   if (!newId.value.trim() || !newName.value.trim()) {
-    message.warning('ID 和显示名称不能为空')
+    message.warning(t('settings.idNameRequired'))
     return
   }
   try {
@@ -82,9 +89,9 @@ async function handleAddCustom() {
     newName.value = ''
     newGlobalPath.value = ''
     newProjectPattern.value = ''
-    message.success('自定义 Agent 已添加')
+    message.success(t('settings.addSuccess'))
   } catch (e: any) {
-    message.error('添加失败: ' + e)
+    message.error(t('settings.addFailed', { error: e }))
   }
 }
 
@@ -92,53 +99,122 @@ async function handleRemoveCustom(id: string) {
   try {
     await configStore.removeCustomAgent(id)
     Object.assign(form, JSON.parse(JSON.stringify(configStore.config)))
-    message.success('已移除')
+    message.success(t('settings.removeSuccess'))
   } catch (e: any) {
-    message.error('移除失败: ' + e)
+    message.error(t('settings.removeFailed', { error: e }))
   }
 }
+
+async function handleCheckUpdate() {
+  await updateStore.checkForUpdates()
+  if (updateStore.updateInfo?.error) {
+    if (updateStore.updateInfo.error === 'NO_RELEASES') {
+      message.warning(t('update.noReleases'))
+    } else {
+      message.error(t('update.checkFailed', { error: updateStore.updateInfo.error }))
+    }
+  } else if (updateStore.updateInfo?.has_update) {
+    message.info(t('update.newVersionAvailable') + ': v' + updateStore.updateInfo.latest_version)
+  } else {
+    message.success(t('update.alreadyLatest'))
+  }
+}
+
+async function openReleasePage() {
+  if (updateStore.updateInfo?.release_url) {
+    await open(updateStore.updateInfo.release_url)
+  }
+}
+
+const renderedNotes = computed(() => {
+  return updateStore.updateInfo?.release_notes || ''
+})
 
 onMounted(async () => {
   await configStore.loadConfig()
   Object.assign(form, JSON.parse(JSON.stringify(configStore.config)))
+  updateStore.loadCurrentVersion()
 })
 </script>
 
 <template>
   <div class="settings-view">
     <div class="page-header">
-      <h1>设置</h1>
+      <h1>{{ t('settings.title') }}</h1>
     </div>
 
-    <NCard title="远端仓库" class="settings-card">
+    <NCard :title="t('settings.about')" class="settings-card">
       <NForm label-placement="left" label-width="140">
-        <NFormItem label="仓库地址">
-          <NInput v-model:value="form.remote_url" placeholder="Git 仓库地址" />
+        <NFormItem :label="t('settings.currentVersion')">
+          <NSpace align="center">
+            <NText>v{{ updateStore.currentVersion }}</NText>
+            <NButton
+              size="small"
+              :loading="updateStore.checking"
+              @click="handleCheckUpdate"
+            >
+              {{ t('settings.checkUpdate') }}
+            </NButton>
+          </NSpace>
         </NFormItem>
-        <NFormItem label="缓存目录">
-          <NInput v-model:value="form.cache_path" placeholder="远端仓库本地缓存目录" />
+        <NFormItem v-if="updateStore.updateInfo && !updateStore.updateInfo.error" :label="t('settings.latestVersion')">
+          <NSpace vertical>
+            <NSpace align="center">
+              <NText>v{{ updateStore.updateInfo.latest_version }}</NText>
+              <NTag v-if="updateStore.updateInfo.has_update" type="warning" size="small" round>
+                {{ t('update.newVersionAvailable') }}
+              </NTag>
+              <NTag v-else type="success" size="small" round>
+                {{ t('update.alreadyLatest') }}
+              </NTag>
+            </NSpace>
+            <NButton
+              v-if="updateStore.updateInfo.has_update"
+              type="primary"
+              size="small"
+              @click="openReleasePage"
+            >
+              {{ t('update.goToDownload') }}
+            </NButton>
+            <NCollapse v-if="updateStore.updateInfo.release_notes">
+              <NCollapseItem :title="t('update.releaseNotes')" name="notes">
+                <div class="release-notes" v-html="renderedNotes" />
+              </NCollapseItem>
+            </NCollapse>
+          </NSpace>
         </NFormItem>
-        <NFormItem label="自动同步">
+      </NForm>
+    </NCard>
+
+    <NCard :title="t('settings.remoteRepo')" class="settings-card">
+      <NForm label-placement="left" label-width="140">
+        <NFormItem :label="t('settings.repoUrl')">
+          <NInput v-model:value="form.remote_url" :placeholder="t('settings.repoUrlPlaceholder')" />
+        </NFormItem>
+        <NFormItem :label="t('settings.cacheDir')">
+          <NInput v-model:value="form.cache_path" :placeholder="t('settings.cacheDirPlaceholder')" />
+        </NFormItem>
+        <NFormItem :label="t('settings.autoSync')">
           <NSwitch v-model:value="form.auto_sync" />
         </NFormItem>
       </NForm>
     </NCard>
 
-    <NCard title="内置 Agent 路径" class="settings-card">
+    <NCard :title="t('settings.builtinAgents')" class="settings-card">
       <template #header-extra>
-        <NText depth="3" style="font-size: 12px">全局路径 / 项目目录模式</NText>
+        <NText depth="3" style="font-size: 12px">{{ t('settings.globalPathProjectPattern') }}</NText>
       </template>
       <NForm label-placement="left" label-width="140">
         <NFormItem v-for="agent in builtInAgents" :key="agent.id" :label="agent.label">
           <NSpace vertical style="width: 100%">
             <NInput
               v-model:value="form.agent_global_paths[agent.id]"
-              :placeholder="'全局 skill 路径'"
+              :placeholder="t('settings.globalSkillPath')"
               size="small"
             />
             <NInput
               v-model:value="form.agent_project_patterns[agent.id]"
-              :placeholder="'项目目录模式，如 {project}/.claude/skills'"
+              :placeholder="t('settings.projectPatternExample')"
               size="small"
             />
           </NSpace>
@@ -146,55 +222,55 @@ onMounted(async () => {
       </NForm>
     </NCard>
 
-    <NCard title="自定义 Agent" class="settings-card">
+    <NCard :title="t('settings.customAgents')" class="settings-card">
       <!-- Existing custom agents -->
       <div v-if="form.custom_agent_ids.length > 0" class="custom-agent-list">
         <div v-for="cid in form.custom_agent_ids" :key="cid" class="custom-agent-item">
           <div class="custom-agent-header">
             <NText strong>{{ form.agent_display_names[cid] || cid }}</NText>
-            <NTag size="small" type="info" round>自定义</NTag>
+            <NTag size="small" type="info" round>{{ t('settings.custom') }}</NTag>
             <NPopconfirm @positive-click="handleRemoveCustom(cid)">
               <template #trigger>
-                <NButton size="tiny" type="error" ghost>移除</NButton>
+                <NButton size="tiny" type="error" ghost>{{ t('common.remove') }}</NButton>
               </template>
-              确认移除该自定义 Agent？
+              {{ t('settings.confirmRemoveAgent') }}
             </NPopconfirm>
           </div>
           <NForm label-placement="left" label-width="100" size="small">
-            <NFormItem label="全局路径">
+            <NFormItem :label="t('settings.agentGlobalPath')">
               <NInput v-model:value="form.agent_global_paths[cid]" />
             </NFormItem>
-            <NFormItem label="项目目录模式">
-              <NInput v-model:value="form.agent_project_patterns[cid]" placeholder="{project}/xxx/skills" />
+            <NFormItem :label="t('settings.agentProjectPattern')">
+              <NInput v-model:value="form.agent_project_patterns[cid]" :placeholder="t('settings.projectPatternPlaceholder')" />
             </NFormItem>
           </NForm>
         </div>
       </div>
-      <NText v-else depth="3" style="font-size: 13px">暂无自定义 Agent</NText>
+      <NText v-else depth="3" style="font-size: 13px">{{ t('settings.noCustomAgents') }}</NText>
 
-      <NDivider style="margin: 16px 0 12px">添加自定义 Agent</NDivider>
+      <NDivider style="margin: 16px 0 12px">{{ t('settings.addCustomAgent') }}</NDivider>
       <NForm label-placement="left" label-width="100" size="small">
-        <NFormItem label="ID (英文)">
-          <NInput v-model:value="newId" placeholder="如 my-agent" />
+        <NFormItem :label="t('settings.agentId')">
+          <NInput v-model:value="newId" :placeholder="t('settings.agentIdPlaceholder')" />
         </NFormItem>
-        <NFormItem label="显示名称">
-          <NInput v-model:value="newName" placeholder="如 My Custom Agent" />
+        <NFormItem :label="t('settings.agentName')">
+          <NInput v-model:value="newName" :placeholder="t('settings.agentNamePlaceholder')" />
         </NFormItem>
-        <NFormItem label="全局路径">
-          <NInput v-model:value="newGlobalPath" placeholder="如 C:/Users/xxx/.my-agent/skills（可留空自动生成）" />
+        <NFormItem :label="t('settings.agentGlobalPath')">
+          <NInput v-model:value="newGlobalPath" :placeholder="t('settings.agentGlobalPathPlaceholder')" />
         </NFormItem>
-        <NFormItem label="项目目录模式">
-          <NInput v-model:value="newProjectPattern" placeholder="如 {project}/.my-agent/skills（可留空自动生成）" />
+        <NFormItem :label="t('settings.agentProjectPattern')">
+          <NInput v-model:value="newProjectPattern" :placeholder="t('settings.agentProjectPatternPlaceholder')" />
         </NFormItem>
         <NFormItem>
-          <NButton type="primary" @click="handleAddCustom">添加</NButton>
+          <NButton type="primary" @click="handleAddCustom">{{ t('common.add') }}</NButton>
         </NFormItem>
       </NForm>
     </NCard>
 
     <NSpace class="actions">
-      <NButton type="primary" @click="handleSave">保存配置</NButton>
-      <NButton @click="handleReset">重置</NButton>
+      <NButton type="primary" @click="handleSave">{{ t('common.save') }}</NButton>
+      <NButton @click="handleReset">{{ t('common.reset') }}</NButton>
     </NSpace>
   </div>
 </template>
@@ -217,4 +293,23 @@ onMounted(async () => {
   display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
 }
 .actions { margin-top: 16px; }
+.release-notes {
+  font-size: 13px;
+  line-height: 1.6;
+  max-height: 300px;
+  overflow-y: auto;
+  word-break: break-word;
+}
+.release-notes :deep(pre) {
+  background: #f5f5f5;
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.release-notes :deep(code) {
+  background: #f0f0f0;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 12px;
+}
 </style>

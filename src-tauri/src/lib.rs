@@ -2,7 +2,7 @@ mod commands;
 mod models;
 mod services;
 
-use commands::{config, git_sync, preview, skill, version};
+use commands::{config, git_sync, preview, skill, update, version};
 use commands::config::AppState;
 use models::config::AppConfig;
 use std::sync::Mutex;
@@ -45,6 +45,9 @@ pub fn run() {
             // Preview
             preview::get_skill_file_tree,
             preview::read_skill_file,
+            // Update
+            update::check_for_updates,
+            update::get_current_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

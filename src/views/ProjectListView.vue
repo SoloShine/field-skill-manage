@@ -15,7 +15,9 @@ import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
 import { useProjectStore } from '@/stores/project'
 import { open } from '@tauri-apps/plugin-dialog'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const router = useRouter()
 const skillStore = useSkillStore()
 const configStore = useConfigStore()
@@ -64,13 +66,13 @@ onMounted(async () => {
   <div class="project-list-view">
     <div class="sticky-header">
       <div class="page-header">
-        <h1>项目管理</h1>
+        <h1>{{ t('project.title') }}</h1>
       </div>
       <div class="toolbar">
         <NSpace>
-          <NButton type="primary" @click="handleAddProject">添加项目</NButton>
+          <NButton type="primary" @click="handleAddProject">{{ t('project.addProject') }}</NButton>
           <NButton :loading="skillStore.syncing" @click="skillStore.syncRemote().then(() => refresh())">
-            同步远端
+            {{ t('common.syncRemote') }}
           </NButton>
         </NSpace>
       </div>
@@ -88,15 +90,15 @@ onMounted(async () => {
           <div class="card-header">
             <NText strong class="project-name">{{ proj.project_name }}</NText>
             <NSpace size="small" align="center" @click.stop>
-              <NTag size="small" round>{{ proj.local_count }} 本地</NTag>
+              <NTag size="small" round>{{ t('stats.local', { count: proj.local_count }) }}</NTag>
               <NTag v-if="proj.matched_count > 0" size="small" type="success" round>
-                {{ proj.matched_count }} 匹配
+                {{ t('stats.matched', { count: proj.matched_count }) }}
               </NTag>
               <NTag v-if="proj.outdated_count > 0" size="small" type="warning" round>
-                {{ proj.outdated_count }} 可更新
+                {{ t('stats.updatable', { count: proj.outdated_count }) }}
               </NTag>
               <NTag v-if="proj.remote_only_count > 0" size="small" type="default" round>
-                {{ proj.remote_only_count }} 可安装
+                {{ t('stats.installable', { count: proj.remote_only_count }) }}
               </NTag>
             </NSpace>
           </div>
@@ -109,19 +111,19 @@ onMounted(async () => {
             <NSpace justify="end">
               <NPopconfirm @positive-click="handleRemoveProject(proj.project_path)">
                 <template #trigger>
-                  <NButton size="tiny" type="error" ghost @click.stop>移除</NButton>
+                  <NButton size="tiny" type="error" ghost @click.stop>{{ t('common.remove') }}</NButton>
                 </template>
-                确认从列表中移除该项目？
+                {{ t('project.confirmRemove') }}
               </NPopconfirm>
               <NButton size="tiny" type="primary" @click.stop="handleOpenProject(proj.project_path)">
-                查看详情
+                {{ t('project.viewDetail') }}
               </NButton>
             </NSpace>
           </template>
         </NCard>
       </div>
 
-      <NEmpty v-else description="暂无项目，点击「添加项目」开始管理" style="margin-top: 40px" />
+      <NEmpty v-else :description="t('project.emptyDesc')" style="margin-top: 40px" />
     </NSpin>
   </div>
 </template>

@@ -58,3 +58,13 @@ export interface ProjectSkillSummary {
   outdated_count: number
   remote_only_count: number
 }
+
+export interface UpdateInfo {
+  current_version: string
+  latest_version: string
+  has_update: boolean
+  release_url: string
+  release_notes: string | null
+  published_at: string | null
+  error: string | null
+}
