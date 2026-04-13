@@ -1,0 +1,126 @@
+<script setup lang="ts">
+import { NCard, NTag, NButton, NSpace, NText } from 'naive-ui'
+import type { SkillMeta } from '@/types'
+import VersionBadge from './VersionBadge.vue'
+
+const props = defineProps<{
+  skill: SkillMeta
+  target: string
+}>()
+
+const emit = defineEmits<{
+  install: [name: string, target: string]
+  update: [name: string, target: string]
+  uninstall: [name: string, target: string]
+}>()
+
+function truncateHash(hash?: string): string {
+  if (!hash) return '-'
+  return hash.length > 16 ? hash.slice(0, 16) + '...' : hash
+}
+</script>
+
+<template>
+  <NCard size="small" hoverable class="skill-card">
+    <div class="skill-header">
+      <div class="skill-title-row">
+        <NText strong class="skill-name">{{ skill.name }}</NText>
+        <NText depth="3" class="skill-version">v{{ skill.version || '?' }}</NText>
+        <VersionBadge :status="skill.install_status" />
+      </div>
+      <div class="skill-desc">
+        <NText depth="2" style="font-size: 13px">
+          {{ skill.description.length > 80 ? skill.description.slice(0, 80) + '...' : skill.description }}
+        </NText>
+      </div>
+      <div class="skill-tags">
+        <NTag v-for="tag in skill.tags.slice(0, 4)" :key="tag" size="tiny" round type="info">
+          {{ tag }}
+        </NTag>
+      </div>
+      <div v-if="skill.checksum" class="skill-hash">
+        <NText depth="3" style="font-size: 11px">
+          {{ skill.checksum.algorithm.toUpperCase() }}: {{ truncateHash(skill.checksum.value) }}
+        </NText>
+      </div>
+      <div v-if="skill.updated_at" class="skill-time">
+        <NText depth="3" style="font-size: 11px">
+          更新: {{ skill.updated_at }}
+        </NText>
+      </div>
+    </div>
+    <template #action>
+      <NSpace>
+        <NButton
+          v-if="skill.install_status === 'not_installed'"
+          type="primary"
+          size="small"
+          @click="emit('install', skill.name, target)"
+        >
+          安装
+        </NButton>
+        <NButton
+          v-if="skill.install_status === 'outdated'"
+          type="warning"
+          size="small"
+          @click="emit('update', skill.name, target)"
+        >
+          更新
+        </NButton>
+        <NButton
+          v-if="skill.install_status === 'installed' || skill.install_status === 'outdated'"
+          size="small"
+          @click="emit('uninstall', skill.name, target)"
+        >
+          卸载
+        </NButton>
+        <NButton
+          v-if="skill.install_status === 'installed'"
+          type="primary"
+          size="small"
+          ghost
+          @click="emit('update', skill.name, target)"
+        >
+          重新安装
+        </NButton>
+      </NSpace>
+    </template>
+  </NCard>
+</template>
+
+<style scoped>
+.skill-card {
+  margin-bottom: 12px;
+}
+
+.skill-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skill-name {
+  font-size: 15px;
+}
+
+.skill-version {
+  font-size: 13px;
+  font-family: monospace;
+}
+
+.skill-desc {
+  margin-top: 6px;
+}
+
+.skill-tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.skill-hash,
+.skill-time {
+  margin-top: 4px;
+}
+</style>
