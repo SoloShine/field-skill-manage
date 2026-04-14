@@ -2,8 +2,16 @@
 import Sidebar from './Sidebar.vue'
 import { NConfigProvider, NMessageProvider } from 'naive-ui'
 import { useLocale } from '@/i18n/useLocale'
+import { useUpdateStore } from '@/stores/update'
+import { onMounted } from 'vue'
 
 const { naiveLocale, naiveDateLocale } = useLocale()
+const updateStore = useUpdateStore()
+
+onMounted(async () => {
+  await updateStore.loadCurrentVersion()
+  await updateStore.checkForUpdates()
+})
 </script>
 
 <template>

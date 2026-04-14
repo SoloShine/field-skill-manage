@@ -198,7 +198,10 @@ const renderedNotes = computed(() => {
 onMounted(async () => {
   await configStore.loadConfig()
   Object.assign(form, JSON.parse(JSON.stringify(configStore.config)))
-  updateStore.loadCurrentVersion()
+  // Version is loaded at app startup (AppLayout), only reload if missing
+  if (!updateStore.currentVersion) {
+    await updateStore.loadCurrentVersion()
+  }
 })
 </script>
 
