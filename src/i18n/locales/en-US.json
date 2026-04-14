@@ -65,7 +65,9 @@
     "updateAll": "Update All ({count})",
     "emptyTitle": "No Skills",
     "emptyDesc": "Click \"Sync Remote\" to fetch skills from the remote repository",
-    "emptyAction": "Sync Remote"
+    "emptyAction": "Sync Remote",
+    "noMatchTitle": "No Matching Results",
+    "noMatchDesc": "Try adjusting your search or clearing the filter"
   },
   "project": {
     "title": "Project Management",

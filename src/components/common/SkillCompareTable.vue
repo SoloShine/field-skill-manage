@@ -162,12 +162,14 @@ const columns = computed<DataTableColumns<SkillComparison>>(() => [
     title: t('table.status'),
     key: 'status',
     width: 80,
+    sorter: (a, b) => a.status.localeCompare(b.status),
     render: (row) => statusTag(row.status),
   },
   {
     title: t('table.skillName'),
     key: 'name',
     width: 160,
+    sorter: (a, b) => a.name.localeCompare(b.name),
     render: (row) => h(NText, { strong: true }, () => row.name),
   },
   {
@@ -204,6 +206,11 @@ const columns = computed<DataTableColumns<SkillComparison>>(() => [
     title: t('table.updatedTime'),
     key: 'updated_at',
     width: 95,
+    sorter: (a, b) => {
+      const ta = (a.remote || a.local)?.updated_at || ''
+      const tb = (b.remote || b.local)?.updated_at || ''
+      return ta.localeCompare(tb)
+    },
     render: (row) => timeCell(row.remote || row.local),
   },
   {

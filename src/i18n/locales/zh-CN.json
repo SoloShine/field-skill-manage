@@ -65,7 +65,9 @@
     "updateAll": "全部更新 ({count})",
     "emptyTitle": "暂无 Skill",
     "emptyDesc": "点击「同步远端」从远程仓库拉取 skill 列表",
-    "emptyAction": "同步远端"
+    "emptyAction": "同步远端",
+    "noMatchTitle": "没有匹配的结果",
+    "noMatchDesc": "尝试调整搜索条件或清除筛选"
   },
   "project": {
     "title": "项目管理",

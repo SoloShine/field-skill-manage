@@ -385,6 +385,11 @@ pub fn install_skill_to_dir(
         return Err(format!("Source skill not found: {}", src.display()));
     }
 
+    // Remove existing target directory to avoid orphaned files
+    if dst.exists() {
+        std::fs::remove_dir_all(&dst).map_err(|e| format!("Remove old dir: {}", e))?;
+    }
+
     copy_dir_recursive(&src, &dst)
 }
 
