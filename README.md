@@ -92,7 +92,7 @@ npm run tauri build
 
 ## 远端仓库
 
-默认从 `https://g.mtpmp.cn/tiany/xip.rmip.skills` 同步 Skill 列表，可在设置中修改。
+默认从 `https://github.com/anthropics/skills.git` 同步 Skill 列表，可在设置中修改。
 
 ## License
 

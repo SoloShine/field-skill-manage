@@ -124,7 +124,7 @@ impl Default for AppConfig {
         let default_cache = format!("{}/.spm/cache", home);
         let default_repo_cache = format!("{}/.spm/cache/default", home);
         Self {
-            remote_url: "https://g.mtpmp.cn/tiany/xip.rmip.skills".to_string(),
+            remote_url: "https://github.com/anthropics/skills.git".to_string(),
             cache_path: default_cache,
             auto_sync: false,
             active_agent_id: "claude".to_string(),
@@ -135,7 +135,7 @@ impl Default for AppConfig {
             repos: vec![RepoConfig {
                 id: "default".to_string(),
                 name: "默认仓库".to_string(),
-                url: "https://g.mtpmp.cn/tiany/xip.rmip.skills".to_string(),
+                url: "https://github.com/anthropics/skills.git".to_string(),
                 cache_path: default_repo_cache,
                 enabled: true,
             }],
