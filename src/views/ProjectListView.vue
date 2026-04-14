@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NCard,
@@ -8,6 +8,7 @@ import {
   NTag,
   NText,
   NSpin,
+  NSkeleton,
   NPopconfirm,
 } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
@@ -22,6 +23,7 @@ const router = useRouter()
 const skillStore = useSkillStore()
 const configStore = useConfigStore()
 const projectStore = useProjectStore()
+const firstLoaded = ref(false)
 
 async function handleAddProject() {
   try {
@@ -59,6 +61,7 @@ watch(() => configStore.config.active_agent_id, refresh)
 onMounted(async () => {
   projectStore.loadPersisted()
   await refresh()
+  firstLoaded.value = true
 })
 </script>
 
@@ -78,7 +81,10 @@ onMounted(async () => {
       </div>
     </div>
 
-    <NSpin :show="skillStore.loading">
+    <div v-if="!firstLoaded && skillStore.loading" class="skeleton-wrapper">
+      <NSkeleton text :repeat="3" />
+    </div>
+    <NSpin v-else :show="skillStore.loading">
       <div v-if="skillStore.projectsOverview.length > 0" class="project-cards">
         <NCard
           v-for="proj in skillStore.projectsOverview"
@@ -171,5 +177,8 @@ onMounted(async () => {
 }
 .card-path {
   margin-top: 6px;
+}
+.skeleton-wrapper {
+  padding: 20px 0;
 }
 </style>

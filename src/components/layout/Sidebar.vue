@@ -67,7 +67,10 @@ onMounted(() => {
 <template>
   <div class="sidebar">
     <div class="sidebar-header">
-      <h2 class="sidebar-title">SPM</h2>
+      <h2 class="sidebar-title">
+        SPM
+        <span v-if="updateStore.updateInfo?.has_update" class="update-dot"></span>
+      </h2>
       <p class="sidebar-subtitle">Skill Package Manager</p>
     </div>
 
@@ -146,6 +149,21 @@ onMounted(() => {
   color: var(--color-accent);
   margin: 0;
   letter-spacing: -0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.update-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f43f5e;
+  display: inline-block;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 .sidebar-subtitle {
   font-size: 11px;

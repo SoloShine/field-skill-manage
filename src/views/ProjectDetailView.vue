@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NInput, NSpin, NBreadcrumb, NBreadcrumbItem, NText, useMessage } from 'naive-ui'
+import { NButton, NInput, NSpin, NSkeleton, NBreadcrumb, NBreadcrumbItem, NText, useMessage } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
 import { useProjectStore } from '@/stores/project'
@@ -28,6 +28,7 @@ const headerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 const operatingKeys = reactive(new Set<string>())
+const firstLoaded = ref(false)
 
 function handleSearchShortcut(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -163,6 +164,7 @@ watch(() => configStore.config.active_agent_id, loadProjectSkills)
 onMounted(async () => {
   await configStore.loadConfig()
   await loadProjectSkills()
+  firstLoaded.value = true
 
   resizeObserver = new ResizeObserver(updateTableHeight)
   if (viewRef.value) resizeObserver.observe(viewRef.value)
@@ -205,7 +207,11 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <NSpin :show="skillStore.loading">
+    <div v-if="!firstLoaded && skillStore.loading" class="skeleton-wrapper">
+      <NSkeleton text :repeat="2" />
+      <NSkeleton text style="width: 60%" />
+    </div>
+    <NSpin v-else :show="skillStore.loading">
       <SkillCompareTable
         v-if="filtered.length > 0"
         :comparisons="filtered"
@@ -290,5 +296,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.skeleton-wrapper {
+  padding: 20px 0;
 }
 </style>
