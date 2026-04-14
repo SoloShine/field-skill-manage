@@ -21,7 +21,8 @@ const message = useMessage()
 const searchText = ref('')
 const previewSkill = ref<string | null>(null)
 const tableHeight = ref(400)
-const spinRef = ref<InstanceType<typeof NSpin> | null>(null)
+const viewRef = ref<HTMLElement | null>(null)
+const headerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 const filtered = computed(() => {
@@ -103,21 +104,24 @@ function handlePreview(name: string) {
   previewSkill.value = name
 }
 
+function updateTableHeight() {
+  if (viewRef.value && headerRef.value) {
+    const viewH = viewRef.value.clientHeight
+    const headerH = headerRef.value.offsetHeight
+    tableHeight.value = Math.max(200, viewH - headerH - 35)
+  }
+}
+
 watch(() => configStore.config.active_agent_id, loadProjectSkills)
 
 onMounted(async () => {
   await configStore.loadConfig()
   await loadProjectSkills()
 
-  const el = (spinRef.value?.$el as HTMLElement)
-  if (el) {
-    resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        tableHeight.value = Math.max(200, entry.contentRect.height)
-      }
-    })
-    resizeObserver.observe(el)
-  }
+  resizeObserver = new ResizeObserver(updateTableHeight)
+  if (viewRef.value) resizeObserver.observe(viewRef.value)
+  if (headerRef.value) resizeObserver.observe(headerRef.value)
+  updateTableHeight()
 })
 
 onUnmounted(() => {
@@ -126,8 +130,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="project-detail-view">
-    <div class="view-header">
+  <div class="project-detail-view" ref="viewRef">
+    <div class="view-header" ref="headerRef">
       <div class="page-header">
         <h1>
           <NButton text size="small" @click="router.push({ name: 'project' })">&larr; {{ t('common.back') }}</NButton>
@@ -148,7 +152,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <NSpin :show="skillStore.loading" class="table-container" ref="spinRef">
+    <NSpin :show="skillStore.loading">
       <SkillCompareTable
         v-if="filtered.length > 0"
         :comparisons="filtered"
@@ -177,6 +181,7 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .view-header {
   flex-shrink: 0;
@@ -210,10 +215,5 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-.project-detail-view :deep(.n-spin-container) {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
 }
 </style>

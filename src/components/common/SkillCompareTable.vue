@@ -20,6 +20,7 @@ const props = defineProps<{
   comparisons: SkillComparison[]
   target: string
   maxHeight?: number
+  flexHeight?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -195,6 +196,7 @@ const columns = computed<DataTableColumns<SkillComparison>>(() => [
     :bordered="false"
     :scroll-x="1050"
     :max-height="maxHeight"
+    :flex-height="flexHeight"
     size="small"
     striped
     :row-key="(row: SkillComparison) => row.name + '_' + (row.source_repo_id || '')"

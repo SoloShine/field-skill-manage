@@ -18,7 +18,8 @@ const searchText = ref('')
 const statusFilter = ref<string | null>(null)
 const previewSkill = ref<string | null>(null)
 const tableHeight = ref(400)
-const spinRef = ref<InstanceType<typeof NSpin> | null>(null)
+const viewRef = ref<HTMLElement | null>(null)
+const headerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
 
 const statusOptions = computed(() => [
@@ -119,6 +120,14 @@ function handlePreview(name: string, _repoId?: string) {
   previewSkill.value = name
 }
 
+function updateTableHeight() {
+  if (viewRef.value && headerRef.value) {
+    const viewH = viewRef.value.clientHeight
+    const headerH = headerRef.value.offsetHeight
+    tableHeight.value = Math.max(200, viewH - headerH - 35)
+  }
+}
+
 watch(() => configStore.config.active_agent_id, async () => {
   await skillStore.loadGlobalSkills()
 })
@@ -127,16 +136,10 @@ onMounted(async () => {
   await configStore.loadConfig()
   await skillStore.loadGlobalSkills()
 
-  // Observe the NSpin container to set table max-height dynamically
-  const el = (spinRef.value?.$el as HTMLElement)
-  if (el) {
-    resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        tableHeight.value = Math.max(200, entry.contentRect.height)
-      }
-    })
-    resizeObserver.observe(el)
-  }
+  resizeObserver = new ResizeObserver(updateTableHeight)
+  if (viewRef.value) resizeObserver.observe(viewRef.value)
+  if (headerRef.value) resizeObserver.observe(headerRef.value)
+  updateTableHeight()
 })
 
 onUnmounted(() => {
@@ -145,8 +148,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="global-view">
-    <div class="view-header">
+  <div class="global-view" ref="viewRef">
+    <div class="view-header" ref="headerRef">
       <div class="page-header">
         <h1>{{ t('global.title') }}</h1>
         <p class="header-path">
@@ -176,7 +179,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <NSpin :show="skillStore.loading" class="table-container" ref="spinRef">
+    <NSpin :show="skillStore.loading">
       <SkillCompareTable
         v-if="filtered.length > 0"
         :comparisons="filtered"
@@ -205,6 +208,7 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .view-header {
   flex-shrink: 0;
@@ -242,10 +246,5 @@ onUnmounted(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-}
-.global-view :deep(.n-spin-container) {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
 }
 </style>
