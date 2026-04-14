@@ -9,7 +9,7 @@ import {
   NPopconfirm,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
-import { h, computed, ref, reactive } from 'vue'
+import { h, computed, ref } from 'vue'
 import type { SkillComparison, SkillMeta, ComparisonStatus } from '@/types'
 import { useI18n } from 'vue-i18n'
 import { useConfigStore } from '@/stores/config'
