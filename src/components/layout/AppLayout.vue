@@ -1,12 +1,30 @@
 <script setup lang="ts">
 import Sidebar from './Sidebar.vue'
-import { NConfigProvider, NMessageProvider } from 'naive-ui'
+import { NConfigProvider, NMessageProvider, darkTheme } from 'naive-ui'
+import type { GlobalThemeOverrides } from 'naive-ui'
 import { useLocale } from '@/i18n/useLocale'
 import { useUpdateStore } from '@/stores/update'
-import { onMounted } from 'vue'
+import { useTheme } from '@/composables/useTheme'
+import { computed, onMounted } from 'vue'
 
 const { naiveLocale, naiveDateLocale } = useLocale()
 const updateStore = useUpdateStore()
+const { isDark, accentColor } = useTheme()
+
+const themeOverrides = computed<GlobalThemeOverrides>(() => ({
+  common: {
+    primaryColor: accentColor.value.primary,
+    primaryColorHover: accentColor.value.hover,
+    primaryColorPressed: accentColor.value.pressed,
+    primaryColorSuppl: accentColor.value.primary,
+    borderRadius: '8px',
+    borderRadiusSmall: '6px',
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontFamilyMono: "'JetBrains Mono', Consolas, Monaco, monospace",
+  },
+}))
+
+const theme = computed(() => isDark.value ? darkTheme : undefined)
 
 onMounted(async () => {
   await updateStore.loadCurrentVersion()
@@ -15,7 +33,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <NConfigProvider :locale="naiveLocale" :date-locale="naiveDateLocale">
+  <NConfigProvider :locale="naiveLocale" :date-locale="naiveDateLocale" :theme="theme" :theme-overrides="themeOverrides">
     <NMessageProvider>
       <div class="app-layout">
         <Sidebar />
@@ -38,5 +56,7 @@ onMounted(async () => {
   flex: 1;
   overflow-y: auto;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
 }
 </style>

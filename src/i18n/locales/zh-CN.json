@@ -137,7 +137,15 @@
     "exportSuccess": "配置已导出",
     "exportFailed": "导出失败: {error}",
     "importSuccess": "配置已导入并应用",
-    "importFailed": "导入失败: {error}"
+    "importFailed": "导入失败: {error}",
+    "appearance": "外观",
+    "themeMode": "主题模式",
+    "lightMode": "亮色",
+    "darkMode": "暗色",
+    "accentColor": "主色调",
+    "customColor": "自定义颜色",
+    "customColorPlaceholder": "#3b82f6",
+    "invalidColor": "请输入有效的颜色值"
   },
   "preview": {
     "fileList": "文件列表",

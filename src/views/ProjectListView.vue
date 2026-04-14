@@ -129,19 +129,16 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.project-list-view {
-  max-width: 900px;
-}
 .sticky-header {
   position: sticky;
   top: -24px;
   z-index: 10;
-  background: #f5f7fa;
+  background: var(--color-bg-primary);
   padding: 0 0 16px;
   margin: 0 -24px;
   padding-left: 24px;
   padding-right: 24px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
 }
 .page-header {
   margin-bottom: 10px;

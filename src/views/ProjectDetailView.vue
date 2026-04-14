@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NInput, NSpin, useMessage } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
@@ -20,6 +20,9 @@ const message = useMessage()
 
 const searchText = ref('')
 const previewSkill = ref<string | null>(null)
+const tableHeight = ref(400)
+const spinRef = ref<InstanceType<typeof NSpin> | null>(null)
+let resizeObserver: ResizeObserver | null = null
 
 const filtered = computed(() => {
   let list: SkillComparison[] = skillStore.projectComparisons
@@ -105,12 +108,26 @@ watch(() => configStore.config.active_agent_id, loadProjectSkills)
 onMounted(async () => {
   await configStore.loadConfig()
   await loadProjectSkills()
+
+  const el = (spinRef.value?.$el as HTMLElement)
+  if (el) {
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        tableHeight.value = Math.max(200, entry.contentRect.height)
+      }
+    })
+    resizeObserver.observe(el)
+  }
+})
+
+onUnmounted(() => {
+  resizeObserver?.disconnect()
 })
 </script>
 
 <template>
   <div class="project-detail-view">
-    <div class="sticky-header">
+    <div class="view-header">
       <div class="page-header">
         <h1>
           <NButton text size="small" @click="router.push({ name: 'project' })">&larr; {{ t('common.back') }}</NButton>
@@ -131,11 +148,12 @@ onMounted(async () => {
       </div>
     </div>
 
-    <NSpin :show="skillStore.loading">
+    <NSpin :show="skillStore.loading" class="table-container" ref="spinRef">
       <SkillCompareTable
         v-if="filtered.length > 0"
         :comparisons="filtered"
         :target="projectStore.projectPath"
+        :max-height="tableHeight"
         @install="handleInstall"
         @update="handleUpdate"
         @uninstall="handleUninstall"
@@ -155,18 +173,15 @@ onMounted(async () => {
 
 <style scoped>
 .project-detail-view {
-  max-width: 1100px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
-.sticky-header {
-  position: sticky;
-  top: -24px;
-  z-index: 10;
-  background: #f5f7fa;
+.view-header {
+  flex-shrink: 0;
   padding: 0 0 16px;
-  margin: 0 -24px;
-  padding-left: 24px;
-  padding-right: 24px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
 }
 .page-header h1 {
   font-size: 22px;
@@ -174,26 +189,31 @@ onMounted(async () => {
   margin-bottom: 2px;
 }
 .header-path {
-  color: #999;
+  color: var(--color-text-muted);
   font-size: 12px;
-  font-family: monospace;
+  font-family: var(--font-mono);
   margin-bottom: 8px;
 }
 .stats-bar {
   margin-bottom: 10px;
   font-size: 13px;
-  color: #666;
+  color: var(--color-text-secondary);
   display: flex;
   gap: 16px;
 }
 .stat-item { font-weight: 500; }
-.stat-same { color: #18a058; }
-.stat-outdated { color: #f0a020; }
-.stat-local { color: #2080f0; }
-.stat-remote { color: #999; }
+.stat-same { color: var(--color-status-same); }
+.stat-outdated { color: var(--color-status-outdated); }
+.stat-local { color: var(--color-status-local); }
+.stat-remote { color: var(--color-status-remote); }
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.project-detail-view :deep(.n-spin-container) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 </style>

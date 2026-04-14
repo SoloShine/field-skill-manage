@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { NButton, NInput, NSpace, NSelect, NSpin, useMessage } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
@@ -17,13 +17,9 @@ const message = useMessage()
 const searchText = ref('')
 const statusFilter = ref<string | null>(null)
 const previewSkill = ref<string | null>(null)
-
-// Sticky header: compute table max-height from window
-const winHeight = ref(window.innerHeight)
-function onResize() { winHeight.value = window.innerHeight }
-window.addEventListener('resize', onResize)
-onUnmounted(() => window.removeEventListener('resize', onResize))
-const tableMaxHeight = computed(() => Math.max(300, winHeight.value - 220))
+const tableHeight = ref(400)
+const spinRef = ref<InstanceType<typeof NSpin> | null>(null)
+let resizeObserver: ResizeObserver | null = null
 
 const statusOptions = computed(() => [
   { label: t('status.all'), value: 'all' },
@@ -130,12 +126,27 @@ watch(() => configStore.config.active_agent_id, async () => {
 onMounted(async () => {
   await configStore.loadConfig()
   await skillStore.loadGlobalSkills()
+
+  // Observe the NSpin container to set table max-height dynamically
+  const el = (spinRef.value?.$el as HTMLElement)
+  if (el) {
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        tableHeight.value = Math.max(200, entry.contentRect.height)
+      }
+    })
+    resizeObserver.observe(el)
+  }
+})
+
+onUnmounted(() => {
+  resizeObserver?.disconnect()
 })
 </script>
 
 <template>
   <div class="global-view">
-    <div class="sticky-header">
+    <div class="view-header">
       <div class="page-header">
         <h1>{{ t('global.title') }}</h1>
         <p class="header-path">
@@ -165,12 +176,12 @@ onMounted(async () => {
       </div>
     </div>
 
-    <NSpin :show="skillStore.loading">
+    <NSpin :show="skillStore.loading" class="table-container" ref="spinRef">
       <SkillCompareTable
         v-if="filtered.length > 0"
         :comparisons="filtered"
         target="global"
-        :max-height="tableMaxHeight"
+        :max-height="tableHeight"
         @install="handleInstall"
         @update="handleUpdate"
         @uninstall="handleUninstall"
@@ -190,18 +201,15 @@ onMounted(async () => {
 
 <style scoped>
 .global-view {
-  max-width: 1100px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
-.sticky-header {
-  position: sticky;
-  top: -24px;
-  z-index: 10;
-  background: #f5f7fa;
+.view-header {
+  flex-shrink: 0;
   padding: 0 0 16px;
-  margin: 0 -24px;
-  padding-left: 24px;
-  padding-right: 24px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--color-border);
 }
 .page-header {
   margin-bottom: 8px;
@@ -212,27 +220,32 @@ onMounted(async () => {
   margin-bottom: 2px;
 }
 .header-path {
-  color: #999;
+  color: var(--color-text-muted);
   font-size: 12px;
-  font-family: monospace;
+  font-family: var(--font-mono);
 }
 .stats-bar {
   margin-bottom: 10px;
   font-size: 13px;
-  color: #666;
+  color: var(--color-text-secondary);
   display: flex;
   gap: 16px;
 }
 .stat-item { font-weight: 500; }
-.stat-same { color: #18a058; }
-.stat-outdated { color: #f0a020; }
-.stat-local { color: #2080f0; }
-.stat-remote { color: #999; }
+.stat-same { color: var(--color-status-same); }
+.stat-outdated { color: var(--color-status-outdated); }
+.stat-local { color: var(--color-status-local); }
+.stat-remote { color: var(--color-status-remote); }
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+}
+.global-view :deep(.n-spin-container) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 </style>

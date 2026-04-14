@@ -48,7 +48,7 @@ function statusTag(status: ComparisonStatus) {
 
 function versionCell(meta: SkillMeta | null) {
   if (!meta) return h(NText, { depth: 3 }, () => '-')
-  return h('span', { style: 'font-family: monospace; font-size: 13px' }, `v${meta.version || '?'}`)
+  return h('span', { style: 'font-family: var(--font-mono); font-size: 13px' }, `v${meta.version || '?'}`)
 }
 
 function hashCell(meta: SkillMeta | null) {
@@ -58,7 +58,7 @@ function hashCell(meta: SkillMeta | null) {
     return h(NText, { depth: 3, style: 'font-size: 12px' }, () => t('table.none'))
   }
   return h(NTooltip, {}, {
-    trigger: () => h(NText, { style: 'font-family: monospace; font-size: 12px; cursor: pointer' }, () => truncateHash(hash)),
+    trigger: () => h(NText, { style: 'font-family: var(--font-mono); font-size: 12px; cursor: pointer' }, () => truncateHash(hash)),
     default: () => `${meta.checksum?.algorithm || 'sha256'}: ${hash}`,
   })
 }

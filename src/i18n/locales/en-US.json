@@ -137,7 +137,15 @@
     "exportSuccess": "Configuration exported",
     "exportFailed": "Export failed: {error}",
     "importSuccess": "Configuration imported and applied",
-    "importFailed": "Import failed: {error}"
+    "importFailed": "Import failed: {error}",
+    "appearance": "Appearance",
+    "themeMode": "Theme Mode",
+    "lightMode": "Light",
+    "darkMode": "Dark",
+    "accentColor": "Accent Color",
+    "customColor": "Custom Color",
+    "customColorPlaceholder": "#3b82f6",
+    "invalidColor": "Please enter a valid color"
   },
   "preview": {
     "fileList": "Files",

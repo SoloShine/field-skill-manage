@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, computed } from 'vue'
+import { onMounted, reactive, ref, computed, watchEffect } from 'vue'
 import {
   NCard,
   NForm,
@@ -14,10 +14,13 @@ import {
   NText,
   NCollapse,
   NCollapseItem,
+  NRadioGroup,
+  NRadioButton,
   useMessage,
 } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useUpdateStore } from '@/stores/update'
+import { useTheme, PRESET_COLORS } from '@/composables/useTheme'
 import type { AppConfig, RepoConfig } from '@/types'
 import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-shell'
@@ -28,6 +31,30 @@ const { t } = useI18n()
 const configStore = useConfigStore()
 const updateStore = useUpdateStore()
 const message = useMessage()
+const { isDark, toggleTheme, accentColor, setAccentColor, setCustomAccentColor, isPresetSelected, isValidHex, isPreset } = useTheme()
+
+const customColorInput = ref('')
+const themeMode = computed({
+  get: () => isDark.value ? 'dark' : 'light',
+  set: (val: string) => { if ((val === 'dark') !== isDark.value) toggleTheme() },
+})
+
+// Sync input with current accent color when it changes from presets
+watchEffect(() => {
+  if (isPreset(accentColor.value)) {
+    customColorInput.value = ''
+  }
+})
+
+function handleCustomColor() {
+  const hex = customColorInput.value.trim()
+  if (!hex) return
+  if (!isValidHex(hex)) {
+    message.warning(t('settings.invalidColor'))
+    return
+  }
+  setCustomAccentColor(hex)
+}
 
 const form = reactive<AppConfig>({
   remote_url: '',
@@ -210,6 +237,7 @@ onMounted(async () => {
     <div class="page-header">
       <h1>{{ t('settings.title') }}</h1>
     </div>
+    <div class="settings-scroll">
 
     <NCard :title="t('settings.about')" class="settings-card">
       <div class="about-intro">
@@ -236,16 +264,14 @@ onMounted(async () => {
           </NSpace>
         </NFormItem>
         <NFormItem v-if="updateStore.updateInfo && !updateStore.updateInfo.error" :label="t('settings.latestVersion')">
-          <NSpace vertical>
-            <NSpace align="center">
-              <NText>v{{ updateStore.updateInfo.latest_version }}</NText>
-              <NTag v-if="updateStore.updateInfo.has_update" type="warning" size="small" round>
-                {{ t('update.newVersionAvailable') }}
-              </NTag>
-              <NTag v-else type="success" size="small" round>
-                {{ t('update.alreadyLatest') }}
-              </NTag>
-            </NSpace>
+          <NSpace align="center">
+            <NText>v{{ updateStore.updateInfo.latest_version }}</NText>
+            <NTag v-if="updateStore.updateInfo.has_update" type="warning" size="small" round>
+              {{ t('update.newVersionAvailable') }}
+            </NTag>
+            <NTag v-else type="success" size="small" round>
+              {{ t('update.alreadyLatest') }}
+            </NTag>
             <NButton
               v-if="updateStore.updateInfo.has_update"
               type="primary"
@@ -260,6 +286,42 @@ onMounted(async () => {
               </NCollapseItem>
             </NCollapse>
           </NSpace>
+        </NFormItem>
+      </NForm>
+    </NCard>
+
+    <NCard :title="t('settings.appearance')" class="settings-card">
+      <NForm label-placement="left" label-width="140">
+        <NFormItem :label="t('settings.themeMode')">
+          <NRadioGroup v-model:value="themeMode" size="small">
+            <NRadioButton value="light">{{ t('settings.lightMode') }}</NRadioButton>
+            <NRadioButton value="dark">{{ t('settings.darkMode') }}</NRadioButton>
+          </NRadioGroup>
+        </NFormItem>
+        <NFormItem :label="t('settings.accentColor')">
+          <div class="accent-picker">
+            <div class="color-swatches">
+              <button
+                v-for="preset in PRESET_COLORS"
+                :key="preset.primary"
+                class="color-swatch"
+                :class="{ active: isPresetSelected(preset) }"
+                :style="{ backgroundColor: preset.primary }"
+                :title="preset.name"
+                @click="setAccentColor(preset)"
+              />
+            </div>
+            <NSpace align="center" style="margin-top: 8px">
+              <NInput
+                v-model:value="customColorInput"
+                :placeholder="t('settings.customColorPlaceholder')"
+                size="small"
+                style="width: 120px"
+                @keyup.enter="handleCustomColor"
+              />
+              <NButton size="small" @click="handleCustomColor">{{ t('settings.customColor') }}</NButton>
+            </NSpace>
+          </div>
         </NFormItem>
       </NForm>
     </NCard>
@@ -387,42 +449,61 @@ onMounted(async () => {
         </NFormItem>
       </NForm>
     </NCard>
+    </div>
 
-    <NSpace class="actions">
-      <NButton type="primary" @click="handleSave">{{ t('common.save') }}</NButton>
-      <NButton @click="handleReset">{{ t('common.reset') }}</NButton>
-      <NButton @click="handleExport">{{ t('settings.exportConfig') }}</NButton>
-      <NButton @click="handleImport">{{ t('settings.importConfig') }}</NButton>
-    </NSpace>
+    <div class="settings-footer">
+      <NSpace>
+        <NButton type="primary" @click="handleSave">{{ t('common.save') }}</NButton>
+        <NButton @click="handleReset">{{ t('common.reset') }}</NButton>
+        <NButton @click="handleExport">{{ t('settings.exportConfig') }}</NButton>
+        <NButton @click="handleImport">{{ t('settings.importConfig') }}</NButton>
+      </NSpace>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.settings-view { max-width: 750px; }
+.settings-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .page-header {
-  position: sticky; top: -24px; z-index: 10;
-  background: #f5f7fa; padding: 0 0 12px;
-  margin: 0 -24px; padding-left: 24px; padding-right: 24px;
+  flex-shrink: 0;
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--color-border);
 }
 .page-header h1 { font-size: 22px; font-weight: 600; }
+.settings-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.settings-footer {
+  flex-shrink: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--color-border);
+  margin-top: 8px;
+}
 .settings-card { margin-bottom: 16px; }
 .custom-agent-list { display: flex; flex-direction: column; gap: 12px; }
 .custom-agent-item {
-  padding: 12px; border: 1px solid #eee; border-radius: 6px;
-  background: #fafafa;
+  padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  background: var(--color-bg-tertiary);
 }
 .custom-agent-header {
   display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
 }
 .repo-list { display: flex; flex-direction: column; gap: 12px; }
 .repo-item {
-  padding: 12px; border: 1px solid #eee; border-radius: 6px;
-  background: #fafafa;
+  padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  background: var(--color-bg-tertiary);
 }
 .repo-header {
   display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
 }
-.actions { margin-top: 16px; }
 .about-intro { margin-bottom: 4px; }
 .about-desc { font-size: 13px; line-height: 1.6; display: block; margin-bottom: 8px; }
 .about-repo { margin-top: 4px; }
@@ -435,15 +516,39 @@ onMounted(async () => {
   word-break: break-word;
 }
 .release-notes :deep(pre) {
-  background: #f5f5f5;
+  background: var(--color-bg-code);
   padding: 8px;
   border-radius: 4px;
   overflow-x: auto;
 }
 .release-notes :deep(code) {
-  background: #f0f0f0;
+  background: var(--color-bg-inline-code);
   padding: 2px 4px;
   border-radius: 3px;
   font-size: 12px;
+}
+.accent-picker {
+  display: flex;
+  flex-direction: column;
+}
+.color-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+  outline: none;
+}
+.color-swatch:hover {
+  transform: scale(1.15);
+}
+.color-swatch.active {
+  border-color: var(--color-text-primary);
 }
 </style>

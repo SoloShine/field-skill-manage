@@ -166,9 +166,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.project-view {
-  max-width: 1100px;
-}
 .page-header {
   margin-bottom: 12px;
 }
@@ -179,22 +176,22 @@ onMounted(async () => {
 .project-selector {
   margin-bottom: 16px;
   padding: 16px;
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #e8e8e8;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
 }
 .stats-bar {
   margin-bottom: 12px;
   font-size: 13px;
-  color: #666;
+  color: var(--color-text-secondary);
   display: flex;
   gap: 16px;
 }
 .stat-item { font-weight: 500; }
-.stat-same { color: #18a058; }
-.stat-outdated { color: #f0a020; }
-.stat-local { color: #2080f0; }
-.stat-remote { color: #999; }
+.stat-same { color: var(--color-status-same); }
+.stat-outdated { color: var(--color-status-outdated); }
+.stat-local { color: var(--color-status-local); }
+.stat-remote { color: var(--color-status-remote); }
 .toolbar {
   margin-bottom: 16px;
 }

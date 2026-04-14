@@ -264,16 +264,16 @@ onMounted(async () => {
   display: flex;
   gap: 0;
   height: 500px;
-  border: 1px solid #eee;
-  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 .file-tree-panel {
   width: 200px;
   min-width: 200px;
-  border-right: 1px solid #eee;
+  border-right: 1px solid var(--color-border);
   overflow-y: auto;
-  background: #fafafa;
+  background: var(--color-bg-tertiary);
 }
 .file-content-panel {
   flex: 1;
@@ -283,8 +283,8 @@ onMounted(async () => {
 }
 .file-tab {
   padding: 6px 12px;
-  border-bottom: 1px solid #eee;
-  background: #fafafa;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
   flex-shrink: 0;
 }
 .file-content-scroll {
@@ -294,8 +294,8 @@ onMounted(async () => {
 }
 .fm-card {
   padding: 12px 16px;
-  border-bottom: 1px solid #eee;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
 }
 .md-content {
   padding: 16px;
@@ -307,13 +307,13 @@ onMounted(async () => {
   margin-bottom: 8px;
 }
 .md-content :deep(code) {
-  background: #f0f0f0;
+  background: var(--color-bg-inline-code);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 13px;
 }
 .md-content :deep(pre) {
-  background: #f5f5f5;
+  background: var(--color-bg-code);
   padding: 12px;
   border-radius: 6px;
   overflow-x: auto;
@@ -323,7 +323,7 @@ onMounted(async () => {
   width: 100%;
 }
 .md-content :deep(th), .md-content :deep(td) {
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
   padding: 6px 10px;
   text-align: left;
 }
