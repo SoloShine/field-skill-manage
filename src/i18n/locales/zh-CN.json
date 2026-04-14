@@ -127,10 +127,17 @@
     "removeFailed": "移除失败: {error}",
     "idNameRequired": "ID 和显示名称不能为空",
     "projectPatternPlaceholder": "{project}/xxx/skills",
+    "projectDesc": "SPM Manager 是一个跨平台的 Skill 包管理器桌面应用，用于从多个 Git 远端仓库同步、对比、安装和管理 Agent Skill，支持 Claude Code、OpenCode、Codex、Cursor、Windsurf 等多种 Agent。",
     "about": "关于",
     "currentVersion": "当前版本",
     "latestVersion": "最新版本",
-    "checkUpdate": "检查更新"
+    "checkUpdate": "检查更新",
+    "exportConfig": "导出配置",
+    "importConfig": "导入配置",
+    "exportSuccess": "配置已导出",
+    "exportFailed": "导出失败: {error}",
+    "importSuccess": "配置已导入并应用",
+    "importFailed": "导入失败: {error}"
   },
   "preview": {
     "fileList": "文件列表",

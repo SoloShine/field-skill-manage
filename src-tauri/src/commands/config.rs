@@ -2,6 +2,49 @@ use std::sync::Mutex;
 
 use crate::models::config::{AgentType, AppConfig};
 
+/// Placeholder used in exported config files to represent the user's home directory
+const HOME_PLACEHOLDER: &str = "${HOME}";
+
+/// Get the current user's home directory
+fn home_dir() -> String {
+    std::env::var("USERPROFILE")
+        .or_else(|_| std::env::var("HOME"))
+        .unwrap_or_else(|_| ".".to_string())
+}
+
+/// Normalize path separators to forward slashes
+fn normalize_path(path: &str) -> String {
+    path.replace('\\', "/")
+}
+
+/// Replace the home directory in all path fields with ${HOME}
+fn make_portable(config: &mut AppConfig) {
+    let home = normalize_path(&home_dir());
+    let replace_home = |s: &str| normalize_path(s).replace(&home, HOME_PLACEHOLDER);
+
+    config.cache_path = replace_home(&config.cache_path);
+    for repo in &mut config.repos {
+        repo.cache_path = replace_home(&repo.cache_path);
+    }
+    for v in config.agent_global_paths.values_mut() {
+        *v = replace_home(v);
+    }
+}
+
+/// Replace ${HOME} placeholders with the current machine's home directory
+fn resolve_portable(config: &mut AppConfig) {
+    let home = normalize_path(&home_dir());
+    let resolve = |s: &str| normalize_path(s).replace(HOME_PLACEHOLDER, &home);
+
+    config.cache_path = resolve(&config.cache_path);
+    for repo in &mut config.repos {
+        repo.cache_path = resolve(&repo.cache_path);
+    }
+    for v in config.agent_global_paths.values_mut() {
+        *v = resolve(v);
+    }
+}
+
 pub struct AppState {
     pub config: Mutex<AppConfig>,
     pub config_path: String,
@@ -130,4 +173,37 @@ pub fn remove_custom_agent(
 pub struct AgentInfo {
     pub id: String,
     pub display_name: String,
+}
+
+/// Export config to a file, replacing home dir with ${HOME} for portability
+#[tauri::command]
+pub fn export_config(state: tauri::State<'_, AppState>, file_path: String) -> Result<(), String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+    let mut portable = config.clone();
+    drop(config);
+
+    make_portable(&mut portable);
+
+    let json = serde_json::to_string_pretty(&portable)
+        .map_err(|e| format!("Failed to serialize config: {}", e))?;
+    std::fs::write(&file_path, json)
+        .map_err(|e| format!("Failed to write file: {}", e))
+}
+
+/// Import config from a file, resolving ${HOME} to current machine's home dir
+#[tauri::command]
+pub fn import_config(state: tauri::State<'_, AppState>, file_path: String) -> Result<(), String> {
+    let content = std::fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read file: {}", e))?;
+    let mut config: AppConfig = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse config: {}", e))?;
+
+    resolve_portable(&mut config);
+    config.migrate_repos();
+
+    // Save and apply
+    save_config_to_disk(&state.config_path, &config)?;
+    let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+    *cfg = config;
+    Ok(())
 }

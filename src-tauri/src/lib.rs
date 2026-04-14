@@ -41,6 +41,8 @@ pub fn run() {
             config::get_all_agents,
             config::add_custom_agent,
             config::remove_custom_agent,
+            config::export_config,
+            config::import_config,
             // Git sync
             git_sync::sync_remote_repo,
             git_sync::get_remote_skills,

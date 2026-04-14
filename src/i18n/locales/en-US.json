@@ -127,10 +127,17 @@
     "removeFailed": "Remove failed: {error}",
     "idNameRequired": "ID and display name are required",
     "projectPatternPlaceholder": "{project}/xxx/skills",
+    "projectDesc": "SPM Manager is a cross-platform desktop app for managing Agent Skills. Sync, compare, install and manage skills from multiple Git repositories. Supports Claude Code, OpenCode, Codex, Cursor, Windsurf and other agents.",
     "about": "About",
     "currentVersion": "Current Version",
     "latestVersion": "Latest Version",
-    "checkUpdate": "Check for Updates"
+    "checkUpdate": "Check for Updates",
+    "exportConfig": "Export Config",
+    "importConfig": "Import Config",
+    "exportSuccess": "Configuration exported",
+    "exportFailed": "Export failed: {error}",
+    "importSuccess": "Configuration imported and applied",
+    "importFailed": "Import failed: {error}"
   },
   "preview": {
     "fileList": "Files",

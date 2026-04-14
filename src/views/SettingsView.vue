@@ -21,6 +21,8 @@ import { useUpdateStore } from '@/stores/update'
 import type { AppConfig, RepoConfig } from '@/types'
 import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-shell'
+import { save, open as openDialog } from '@tauri-apps/plugin-dialog'
+import { invoke } from '@tauri-apps/api/core'
 
 const { t } = useI18n()
 const configStore = useConfigStore()
@@ -138,6 +140,36 @@ async function handleRemoveCustom(id: string) {
   }
 }
 
+async function handleExport() {
+  try {
+    const filePath = await save({
+      defaultPath: 'spm-config.json',
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    })
+    if (!filePath) return
+    await invoke('export_config', { filePath })
+    message.success(t('settings.exportSuccess'))
+  } catch (e: any) {
+    message.error(t('settings.exportFailed', { error: e }))
+  }
+}
+
+async function handleImport() {
+  try {
+    const filePath = await openDialog({
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      multiple: false,
+    })
+    if (!filePath || typeof filePath !== 'string') return
+    await invoke('import_config', { filePath })
+    await configStore.loadConfig()
+    Object.assign(form, JSON.parse(JSON.stringify(configStore.config)))
+    message.success(t('settings.importSuccess'))
+  } catch (e: any) {
+    message.error(t('settings.importFailed', { error: e }))
+  }
+}
+
 async function handleCheckUpdate() {
   await updateStore.checkForUpdates()
   if (updateStore.updateInfo?.error) {
@@ -177,6 +209,16 @@ onMounted(async () => {
     </div>
 
     <NCard :title="t('settings.about')" class="settings-card">
+      <div class="about-intro">
+        <NText class="about-desc">{{ t('settings.projectDesc') }}</NText>
+        <NSpace align="center" class="about-repo">
+          <NText depth="3" class="about-repo-label">GitHub:</NText>
+          <NButton text type="primary" @click="open('https://github.com/SoloShine/field-skill-manage')">
+            SoloShine/field-skill-manage
+          </NButton>
+        </NSpace>
+      </div>
+      <NDivider style="margin: 12px 0" />
       <NForm label-placement="left" label-width="140">
         <NFormItem :label="t('settings.currentVersion')">
           <NSpace align="center">
@@ -346,6 +388,8 @@ onMounted(async () => {
     <NSpace class="actions">
       <NButton type="primary" @click="handleSave">{{ t('common.save') }}</NButton>
       <NButton @click="handleReset">{{ t('common.reset') }}</NButton>
+      <NButton @click="handleExport">{{ t('settings.exportConfig') }}</NButton>
+      <NButton @click="handleImport">{{ t('settings.importConfig') }}</NButton>
     </NSpace>
   </div>
 </template>
@@ -376,6 +420,10 @@ onMounted(async () => {
   display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
 }
 .actions { margin-top: 16px; }
+.about-intro { margin-bottom: 4px; }
+.about-desc { font-size: 13px; line-height: 1.6; display: block; margin-bottom: 8px; }
+.about-repo { margin-top: 4px; }
+.about-repo-label { font-size: 13px; }
 .release-notes {
   font-size: 13px;
   line-height: 1.6;
