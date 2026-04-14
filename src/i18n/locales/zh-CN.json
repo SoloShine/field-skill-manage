@@ -75,6 +75,7 @@
     "emptyDesc": "暂无项目，点击「添加项目」开始管理",
     "emptyAction": "添加项目",
     "detailTitle": "项目详情",
+    "breadcrumbProject": "项目管理",
     "skillTitle": "项目 Skill 管理",
     "selectPathTitle": "请选择项目路径",
     "selectPathDesc": "点击上方「浏览...」按钮选择一个项目目录",

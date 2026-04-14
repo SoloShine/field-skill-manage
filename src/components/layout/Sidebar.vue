@@ -8,9 +8,9 @@ import { useI18n } from 'vue-i18n'
 import { useLocale } from '@/i18n/useLocale'
 import { SUPPORTED_LOCALES } from '@/i18n'
 import { useTheme } from '@/composables/useTheme'
-import { computed, onMounted } from 'vue'
+import { computed, h, onMounted } from 'vue'
 import { open } from '@tauri-apps/plugin-shell'
-import { MoonOutline, SunnyOutline } from '@vicons/ionicons5'
+import { MoonOutline, SunnyOutline, GlobeOutline, FolderOutline, SettingsOutline } from '@vicons/ionicons5'
 
 const router = useRouter()
 const route = useRoute()
@@ -21,9 +21,9 @@ const { currentLocale, setLocale } = useLocale()
 const { isDark, toggleTheme } = useTheme()
 
 const menuOptions = computed<MenuOption[]>(() => [
-  { label: () => t('nav.global'), key: 'global' },
-  { label: () => t('nav.project'), key: 'project' },
-  { label: () => t('nav.settings'), key: 'settings' },
+  { label: () => t('nav.global'), key: 'global', icon: () => h(NIcon, { size: 18 }, () => h(GlobeOutline)) },
+  { label: () => t('nav.project'), key: 'project', icon: () => h(NIcon, { size: 18 }, () => h(FolderOutline)) },
+  { label: () => t('nav.settings'), key: 'settings', icon: () => h(NIcon, { size: 18 }, () => h(SettingsOutline)) },
 ])
 
 const agentOptions = computed(() =>

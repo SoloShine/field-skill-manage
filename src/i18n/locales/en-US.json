@@ -75,6 +75,7 @@
     "emptyDesc": "No projects yet. Click \"Add Project\" to get started.",
     "emptyAction": "Add Project",
     "detailTitle": "Project Details",
+    "breadcrumbProject": "Projects",
     "skillTitle": "Project Skill Management",
     "selectPathTitle": "Select Project Path",
     "selectPathDesc": "Click the \"Browse...\" button above to select a project directory",

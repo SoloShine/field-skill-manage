@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NInput, NSpin, useMessage } from 'naive-ui'
+import { NButton, NInput, NSpin, NBreadcrumb, NBreadcrumbItem, NText, useMessage } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
 import { useProjectStore } from '@/stores/project'
@@ -32,6 +32,12 @@ const filtered = computed(() => {
     list = list.filter((s) => s.name.toLowerCase().includes(q))
   }
   return list
+})
+
+const projectName = computed(() => {
+  if (!projectStore.projectPath) return ''
+  const parts = projectStore.projectPath.replace(/\\/g, '/')
+  return parts.split('/').filter(Boolean).pop() || projectStore.projectPath
 })
 
 const stats = computed(() => {
@@ -149,10 +155,14 @@ onUnmounted(() => {
   <div class="project-detail-view" ref="viewRef">
     <div class="view-header" ref="headerRef">
       <div class="page-header">
-        <h1>
-          <NButton text size="small" @click="router.push({ name: 'project' })">&larr; {{ t('common.back') }}</NButton>
-          {{ t('project.detailTitle') }}
-        </h1>
+        <NBreadcrumb>
+          <NBreadcrumbItem @click="router.push({ name: 'project' })">
+            {{ t('project.breadcrumbProject') }}
+          </NBreadcrumbItem>
+          <NBreadcrumbItem>
+            <NText strong>{{ projectName }}</NText>
+          </NBreadcrumbItem>
+        </NBreadcrumb>
       </div>
       <p class="header-path">{{ projectStore.projectPath }}</p>
       <div class="stats-bar">
@@ -207,9 +217,7 @@ onUnmounted(() => {
   padding: 0 0 16px;
   border-bottom: 1px solid var(--color-border);
 }
-.page-header h1 {
-  font-size: 22px;
-  font-weight: 600;
+.page-header {
   margin-bottom: 2px;
 }
 .header-path {
