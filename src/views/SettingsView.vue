@@ -18,7 +18,7 @@ import {
 } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useUpdateStore } from '@/stores/update'
-import type { AppConfig } from '@/types'
+import type { AppConfig, RepoConfig } from '@/types'
 import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-shell'
 
@@ -36,7 +36,13 @@ const form = reactive<AppConfig>({
   agent_project_patterns: {},
   agent_display_names: {},
   custom_agent_ids: [],
+  repos: [],
 })
+
+// New repo form
+const newRepoName = ref('')
+const newRepoUrl = ref('')
+const newRepoCachePath = ref('')
 
 // New custom agent form
 const newId = ref('')
@@ -70,6 +76,33 @@ async function handleReset() {
   } catch (e: any) {
     message.error(t('settings.resetFailed', { error: e }))
   }
+}
+
+function handleAddRepo() {
+  if (!newRepoUrl.value.trim()) {
+    message.warning(t('settings.repoUrlRequired'))
+    return
+  }
+  const id = 'repo_' + Date.now()
+  // Derive home from claude's global path (always present, e.g. "C:/Users/xxx/.claude/skills")
+  const claudePath = form.agent_global_paths['claude'] || ''
+  const homeDir = claudePath.replace(/[\\/]\.claude[\\/].*$/, '')
+  const defaultCache = homeDir ? `${homeDir}/.spm/cache_${id}` : ''
+  const repo: RepoConfig = {
+    id,
+    name: newRepoName.value.trim() || t('settings.defaultRepoName'),
+    url: newRepoUrl.value.trim(),
+    cache_path: newRepoCachePath.value.trim() || defaultCache,
+    enabled: true,
+  }
+  form.repos.push(repo)
+  newRepoName.value = ''
+  newRepoUrl.value = ''
+  newRepoCachePath.value = ''
+}
+
+function handleRemoveRepo(index: number) {
+  form.repos.splice(index, 1)
 }
 
 async function handleAddCustom() {
@@ -187,17 +220,59 @@ onMounted(async () => {
     </NCard>
 
     <NCard :title="t('settings.remoteRepo')" class="settings-card">
-      <NForm label-placement="left" label-width="140">
+      <!-- Existing repos -->
+      <div v-if="form.repos.length > 0" class="repo-list">
+        <div v-for="(repo, index) in form.repos" :key="repo.id" class="repo-item">
+          <div class="repo-header">
+            <NText strong>{{ repo.name }}</NText>
+            <NTag size="small" :type="repo.enabled ? 'success' : 'default'" round>
+              {{ repo.enabled ? t('settings.repoEnabled') : t('settings.repoDisabled') }}
+            </NTag>
+            <NPopconfirm @positive-click="handleRemoveRepo(index)">
+              <template #trigger>
+                <NButton size="tiny" type="error" ghost>{{ t('common.remove') }}</NButton>
+              </template>
+              {{ t('settings.confirmRemoveRepo') }}
+            </NPopconfirm>
+          </div>
+          <NForm label-placement="left" label-width="100" size="small">
+            <NFormItem :label="t('settings.repoName')">
+              <NInput v-model:value="repo.name" />
+            </NFormItem>
+            <NFormItem :label="t('settings.repoUrl')">
+              <NInput v-model:value="repo.url" />
+            </NFormItem>
+            <NFormItem :label="t('settings.cacheDir')">
+              <NInput v-model:value="repo.cache_path" />
+            </NFormItem>
+            <NFormItem :label="t('settings.repoEnabled')">
+              <NSwitch v-model:value="repo.enabled" />
+            </NFormItem>
+          </NForm>
+        </div>
+      </div>
+      <NText v-else depth="3" style="font-size: 13px">{{ t('settings.noRepos') }}</NText>
+
+      <NDivider style="margin: 16px 0 12px">{{ t('settings.addRepo') }}</NDivider>
+      <NForm label-placement="left" label-width="100" size="small">
+        <NFormItem :label="t('settings.repoName')">
+          <NInput v-model:value="newRepoName" :placeholder="t('settings.repoNamePlaceholder')" />
+        </NFormItem>
         <NFormItem :label="t('settings.repoUrl')">
-          <NInput v-model:value="form.remote_url" :placeholder="t('settings.repoUrlPlaceholder')" />
+          <NInput v-model:value="newRepoUrl" :placeholder="t('settings.repoUrlPlaceholder')" />
         </NFormItem>
         <NFormItem :label="t('settings.cacheDir')">
-          <NInput v-model:value="form.cache_path" :placeholder="t('settings.cacheDirPlaceholder')" />
+          <NInput v-model:value="newRepoCachePath" :placeholder="t('settings.cacheDirPlaceholder')" />
         </NFormItem>
-        <NFormItem :label="t('settings.autoSync')">
-          <NSwitch v-model:value="form.auto_sync" />
+        <NFormItem>
+          <NButton type="primary" @click="handleAddRepo">{{ t('common.add') }}</NButton>
         </NFormItem>
       </NForm>
+
+      <NDivider />
+      <NFormItem :label="t('settings.autoSync')" label-placement="left">
+        <NSwitch v-model:value="form.auto_sync" />
+      </NFormItem>
     </NCard>
 
     <NCard :title="t('settings.builtinAgents')" class="settings-card">
@@ -290,6 +365,14 @@ onMounted(async () => {
   background: #fafafa;
 }
 .custom-agent-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.repo-list { display: flex; flex-direction: column; gap: 12px; }
+.repo-item {
+  padding: 12px; border: 1px solid #eee; border-radius: 6px;
+  background: #fafafa;
+}
+.repo-header {
   display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
 }
 .actions { margin-top: 16px; }

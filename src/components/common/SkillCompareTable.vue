@@ -11,19 +11,22 @@ import type { DataTableColumns } from 'naive-ui'
 import { h, computed } from 'vue'
 import type { SkillComparison, SkillMeta, ComparisonStatus } from '@/types'
 import { useI18n } from 'vue-i18n'
+import { useConfigStore } from '@/stores/config'
 
 const { t } = useI18n()
+const configStore = useConfigStore()
 
 const props = defineProps<{
   comparisons: SkillComparison[]
   target: string
+  maxHeight?: number
 }>()
 
 const emit = defineEmits<{
-  install: [name: string, target: string]
-  update: [name: string, target: string]
+  install: [name: string, target: string, repoId?: string]
+  update: [name: string, target: string, repoId?: string]
   uninstall: [name: string, target: string]
-  preview: [name: string]
+  preview: [name: string, repoId?: string]
 }>()
 
 function truncateHash(hash?: string): string {
@@ -75,32 +78,41 @@ function descCell(meta: SkillMeta | null) {
   })
 }
 
+function repoCell(row: SkillComparison) {
+  const repoId = row.source_repo_id
+  if (!repoId) return h(NText, { depth: 3 }, () => '-')
+  const repo = configStore.config.repos.find(r => r.id === repoId)
+  const name = repo?.name || repoId
+  return h(NTag, { size: 'small', type: 'info', round: true }, () => name)
+}
+
 function actionsCell(row: SkillComparison) {
   const buttons: ReturnType<typeof h>[] = []
+  const repoId = row.source_repo_id || undefined
 
   // Preview button always available (shows remote if no local)
   if (row.local || row.remote) {
     buttons.push(
-      h(NButton, { size: 'tiny', quaternary: true, onClick: () => emit('preview', row.name) }, () => t('common.preview'))
+      h(NButton, { size: 'tiny', quaternary: true, onClick: () => emit('preview', row.name, repoId) }, () => t('common.preview'))
     )
   }
 
   if (row.status === 'RemoteOnly') {
     buttons.push(
-      h(NButton, { type: 'primary', size: 'tiny', onClick: () => emit('install', row.name, props.target) }, () => t('common.install'))
+      h(NButton, { type: 'primary', size: 'tiny', onClick: () => emit('install', row.name, props.target, repoId) }, () => t('common.install'))
     )
   }
 
   if (row.status === 'Outdated') {
     buttons.push(
-      h(NButton, { type: 'warning', size: 'tiny', onClick: () => emit('update', row.name, props.target) }, () => t('common.update'))
+      h(NButton, { type: 'warning', size: 'tiny', onClick: () => emit('update', row.name, props.target, repoId) }, () => t('common.update'))
     )
   }
 
   if (row.local) {
     if (row.status === 'Same') {
       buttons.push(
-        h(NButton, { size: 'tiny', onClick: () => emit('update', row.name, props.target) }, () => t('common.reinstallShort'))
+        h(NButton, { size: 'tiny', onClick: () => emit('update', row.name, props.target, repoId) }, () => t('common.reinstallShort'))
       )
     }
     buttons.push(
@@ -123,6 +135,12 @@ const columns = computed<DataTableColumns<SkillComparison>>(() => [
     key: 'name',
     width: 160,
     render: (row) => h(NText, { strong: true }, () => row.name),
+  },
+  {
+    title: t('table.sourceRepo'),
+    key: 'source_repo',
+    width: 100,
+    render: (row) => repoCell(row),
   },
   {
     title: t('table.localVersion'),
@@ -175,9 +193,10 @@ const columns = computed<DataTableColumns<SkillComparison>>(() => [
     :columns="columns"
     :data="comparisons"
     :bordered="false"
-    :scroll-x="950"
+    :scroll-x="1050"
+    :max-height="maxHeight"
     size="small"
     striped
-    :row-key="(row: SkillComparison) => row.name"
+    :row-key="(row: SkillComparison) => row.name + '_' + (row.source_repo_id || '')"
   />
 </template>

@@ -12,6 +12,8 @@ pub struct SkillMeta {
     pub checksum: Option<Checksum>,
     pub files: Option<Vec<FileEntry>>,
     pub install_status: Option<InstallStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_repo_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -99,4 +101,7 @@ pub struct SkillComparison {
     pub remote: Option<SkillMeta>,
     /// Comparison result
     pub status: ComparisonStatus,
+    /// Which repo this skill comes from (for remote skills)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_repo_id: Option<String>,
 }

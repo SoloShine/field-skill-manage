@@ -1,6 +1,21 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Configuration for a single remote Git repository
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RepoConfig {
+    pub id: String,
+    pub name: String,
+    pub url: String,
+    pub cache_path: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
 /// Supported built-in agent types
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum AgentType {
@@ -68,7 +83,9 @@ impl AgentType {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppConfig {
+    #[serde(default)]
     pub remote_url: String,
+    #[serde(default)]
     pub cache_path: String,
     pub auto_sync: bool,
     /// Active agent ID (built-in id like "claude" or custom id)
@@ -81,6 +98,9 @@ pub struct AppConfig {
     pub agent_display_names: HashMap<String, String>,
     /// Ordered list of custom agent ids
     pub custom_agent_ids: Vec<String>,
+    /// Multiple remote repositories
+    #[serde(default)]
+    pub repos: Vec<RepoConfig>,
 }
 
 impl Default for AppConfig {
@@ -101,20 +121,42 @@ impl Default for AppConfig {
             );
         }
 
+        let default_cache = format!("{}/.spm/cache", home);
+        let default_repo_cache = format!("{}/.spm/cache/default", home);
         Self {
             remote_url: "https://g.mtpmp.cn/tiany/xip.rmip.skills".to_string(),
-            cache_path: format!("{}/.spm/cache", home),
+            cache_path: default_cache,
             auto_sync: false,
             active_agent_id: "claude".to_string(),
             agent_global_paths,
             agent_project_patterns,
             agent_display_names: HashMap::new(),
             custom_agent_ids: Vec::new(),
+            repos: vec![RepoConfig {
+                id: "default".to_string(),
+                name: "默认仓库".to_string(),
+                url: "https://g.mtpmp.cn/tiany/xip.rmip.skills".to_string(),
+                cache_path: default_repo_cache,
+                enabled: true,
+            }],
         }
     }
 }
 
 impl AppConfig {
+    /// Migrate from legacy single-repo config (remote_url/cache_path) to multi-repo (repos)
+    pub fn migrate_repos(&mut self) {
+        if self.repos.is_empty() && !self.remote_url.is_empty() {
+            self.repos.push(RepoConfig {
+                id: "default".to_string(),
+                name: "默认仓库".to_string(),
+                url: self.remote_url.clone(),
+                cache_path: self.cache_path.clone(),
+                enabled: true,
+            });
+        }
+    }
+
     /// Resolve the global skill path for the active agent
     pub fn active_global_path(&self) -> String {
         self.agent_global_paths

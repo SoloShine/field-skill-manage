@@ -4,31 +4,65 @@ use crate::commands::config::AppState;
 use crate::models::skill::SkillMeta;
 use crate::services::{git_service, skill_service};
 
+/// Sync result with partial failure info
+#[derive(serde::Serialize)]
+pub struct SyncResult {
+    pub success_count: usize,
+    pub fail_count: usize,
+    pub errors: Vec<String>,
+}
+
 #[tauri::command]
-pub fn sync_remote_repo(state: State<'_, AppState>) -> Result<(), String> {
+pub fn sync_remote_repo(state: State<'_, AppState>) -> Result<SyncResult, String> {
     let config = state.config.lock().map_err(|e| e.to_string())?;
-    let remote_url = config.remote_url.clone();
-    let cache_path = config.cache_path.clone();
+    let repos: Vec<_> = config.repos.iter().filter(|r| r.enabled).cloned().collect();
     drop(config);
 
-    git_service::sync_repo(&remote_url, &cache_path)
+    if repos.is_empty() {
+        return Err("No enabled repositories to sync".to_string());
+    }
+
+    let mut errors: Vec<String> = Vec::new();
+    let mut success_count = 0usize;
+    for repo in &repos {
+        if let Err(e) = git_service::sync_repo(&repo.url, &repo.cache_path) {
+            eprintln!("Warning: Failed to sync repo '{}': {}", repo.name, e);
+            errors.push(format!("{}: {}", repo.name, e));
+        } else {
+            success_count += 1;
+        }
+    }
+
+    // If ALL repos failed, return error
+    if success_count == 0 {
+        return Err(format!("All repos failed to sync: {}", errors.join("; ")));
+    }
+
+    Ok(SyncResult {
+        success_count,
+        fail_count: errors.len(),
+        errors,
+    })
 }
 
 #[tauri::command]
 pub fn get_remote_skills(state: State<'_, AppState>) -> Result<Vec<SkillMeta>, String> {
     let config = state.config.lock().map_err(|e| e.to_string())?;
-    let cache_path = config.cache_path.clone();
+    let repos = config.repos.clone();
     drop(config);
 
-    let manifest = skill_service::parse_manifest(&cache_path)?;
-
     let mut skills = Vec::new();
-    for entry in &manifest.skills {
-        match skill_service::build_remote_skill_meta(&cache_path, entry) {
-            Ok(meta) => skills.push(meta),
-            Err(e) => {
-                // Log but don't fail the whole list
-                eprintln!("Warning: Failed to parse skill {}: {}", entry.name, e);
+    for repo in &repos {
+        if !repo.enabled {
+            continue;
+        }
+        let entries = skill_service::load_skill_entries(&repo.cache_path);
+        for entry in &entries {
+            match skill_service::build_remote_skill_meta(&repo.cache_path, entry, Some(&repo.id)) {
+                Ok(meta) => skills.push(meta),
+                Err(e) => {
+                    eprintln!("Warning: Failed to parse skill {} from {}: {}", entry.name, repo.name, e);
+                }
             }
         }
     }
@@ -40,21 +74,28 @@ pub fn get_remote_skills(state: State<'_, AppState>) -> Result<Vec<SkillMeta>, S
 pub fn get_remote_skill_detail(
     state: State<'_, AppState>,
     skill_name: String,
+    repo_id: Option<String>,
 ) -> Result<SkillMeta, String> {
     let config = state.config.lock().map_err(|e| e.to_string())?;
-    let cache_path = config.cache_path.clone();
+    let repos = config.repos.clone();
     drop(config);
 
-    let manifest = skill_service::parse_manifest(&cache_path)?;
-    let entry = manifest
-        .skills
-        .iter()
-        .find(|s| s.name == skill_name)
-        .ok_or(format!("Skill '{}' not found in manifest", skill_name))?;
+    // If repo_id specified, search only that repo; otherwise search all
+    let target_repos: Vec<_> = if let Some(ref rid) = repo_id {
+        repos.iter().filter(|r| &r.id == rid).collect()
+    } else {
+        repos.iter().filter(|r| r.enabled).collect()
+    };
 
-    let mut meta = skill_service::build_remote_skill_meta(&cache_path, entry)?;
-    let skill_dir = std::path::Path::new(&cache_path).join(&entry.path);
-    meta.files = crate::services::hash_service::list_file_hashes(&skill_dir).ok();
+    for repo in target_repos {
+        let entries = skill_service::load_skill_entries(&repo.cache_path);
+        if let Some(entry) = entries.iter().find(|s| s.name == skill_name) {
+            let mut meta = skill_service::build_remote_skill_meta(&repo.cache_path, entry, Some(&repo.id))?;
+            let skill_dir = std::path::Path::new(&repo.cache_path).join(&entry.path);
+            meta.files = crate::services::hash_service::list_file_hashes(&skill_dir).ok();
+            return Ok(meta);
+        }
+    }
 
-    Ok(meta)
+    Err(format!("Skill '{}' not found in any repository", skill_name))
 }

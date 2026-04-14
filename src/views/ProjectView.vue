@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed, watch, onUnmounted } from 'vue'
 import { NButton, NInput, NSpace, NSpin, useMessage } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
@@ -17,6 +17,13 @@ const projectStore = useProjectStore()
 const message = useMessage()
 
 const searchText = ref('')
+
+// Sticky header: compute table max-height from window
+const winHeight = ref(window.innerHeight)
+function onResize() { winHeight.value = window.innerHeight }
+window.addEventListener('resize', onResize)
+onUnmounted(() => window.removeEventListener('resize', onResize))
+const tableMaxHeight = computed(() => Math.max(300, winHeight.value - 280))
 
 const filtered = computed(() => {
   let list: SkillComparison[] = skillStore.projectComparisons
@@ -68,10 +75,10 @@ async function handleSync() {
   }
 }
 
-async function handleInstall(name: string) {
+async function handleInstall(name: string, _target: string, repoId?: string) {
   if (!projectStore.projectPath) return
   try {
-    await skillStore.installSkill(name, projectStore.projectPath)
+    await skillStore.installSkill(name, projectStore.projectPath, repoId)
     await loadProjectSkills()
     message.success(t('global.installSuccess', { name }))
   } catch (e: any) {
@@ -79,10 +86,10 @@ async function handleInstall(name: string) {
   }
 }
 
-async function handleUpdate(name: string) {
+async function handleUpdate(name: string, _target: string, repoId?: string) {
   if (!projectStore.projectPath) return
   try {
-    await skillStore.updateSkill(name, projectStore.projectPath)
+    await skillStore.updateSkill(name, projectStore.projectPath, repoId)
     await loadProjectSkills()
     message.success(t('global.updateSuccess', { name }))
   } catch (e: any) {
@@ -145,6 +152,7 @@ onMounted(async () => {
           v-if="filtered.length > 0"
           :comparisons="filtered"
           :target="projectStore.projectPath"
+          :max-height="tableMaxHeight"
           @install="handleInstall"
           @update="handleUpdate"
           @uninstall="handleUninstall"

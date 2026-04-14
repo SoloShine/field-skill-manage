@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed, watch, onUnmounted } from 'vue'
 import { NButton, NInput, NSpace, NSelect, NSpin, useMessage } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
@@ -18,6 +18,13 @@ const searchText = ref('')
 const statusFilter = ref<string | null>(null)
 const previewSkill = ref<string | null>(null)
 
+// Sticky header: compute table max-height from window
+const winHeight = ref(window.innerHeight)
+function onResize() { winHeight.value = window.innerHeight }
+window.addEventListener('resize', onResize)
+onUnmounted(() => window.removeEventListener('resize', onResize))
+const tableMaxHeight = computed(() => Math.max(300, winHeight.value - 220))
+
 const statusOptions = computed(() => [
   { label: t('status.all'), value: 'all' },
   { label: t('status.same'), value: 'Same' },
@@ -25,6 +32,7 @@ const statusOptions = computed(() => [
   { label: t('status.localOnly'), value: 'LocalOnly' },
   { label: t('status.remoteOnly'), value: 'RemoteOnly' },
 ])
+
 
 const filtered = computed(() => {
   let list: SkillComparison[] = skillStore.globalComparisons
@@ -53,15 +61,20 @@ async function handleSync() {
   try {
     await skillStore.syncRemote()
     await skillStore.loadGlobalSkills()
-    message.success(t('global.syncComplete'))
+    const result = skillStore.lastSyncResult
+    if (result && result.fail_count > 0) {
+      message.warning(t('global.syncPartial', { ok: result.success_count, fail: result.fail_count, errors: result.errors.join('; ') }))
+    } else {
+      message.success(t('global.syncComplete'))
+    }
   } catch (e: any) {
     message.error(t('global.syncFailed', { error: e }))
   }
 }
 
-async function handleInstall(name: string) {
+async function handleInstall(name: string, _target: string, repoId?: string) {
   try {
-    await skillStore.installSkill(name, 'global')
+    await skillStore.installSkill(name, 'global', repoId)
     await skillStore.loadGlobalSkills()
     message.success(t('global.installSuccess', { name }))
   } catch (e: any) {
@@ -69,9 +82,9 @@ async function handleInstall(name: string) {
   }
 }
 
-async function handleUpdate(name: string) {
+async function handleUpdate(name: string, _target: string, repoId?: string) {
   try {
-    await skillStore.updateSkill(name, 'global')
+    await skillStore.updateSkill(name, 'global', repoId)
     await skillStore.loadGlobalSkills()
     message.success(t('global.updateSuccess', { name }))
   } catch (e: any) {
@@ -106,7 +119,7 @@ async function handleBatchUpdate() {
   }
 }
 
-function handlePreview(name: string) {
+function handlePreview(name: string, _repoId?: string) {
   previewSkill.value = name
 }
 
@@ -157,6 +170,7 @@ onMounted(async () => {
         v-if="filtered.length > 0"
         :comparisons="filtered"
         target="global"
+        :max-height="tableMaxHeight"
         @install="handleInstall"
         @update="handleUpdate"
         @uninstall="handleUninstall"

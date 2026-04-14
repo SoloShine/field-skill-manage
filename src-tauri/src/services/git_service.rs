@@ -1,15 +1,67 @@
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
+
+/// Check if a directory is a valid git repository
+fn is_valid_git_repo(path: &Path) -> bool {
+    if !path.join(".git").exists() {
+        return false;
+    }
+    Command::new("git")
+        .args(["rev-parse", "--git-dir"])
+        .current_dir(path)
+        .stderr(Stdio::null())
+        .stdout(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+/// Perform a fresh git clone
+fn git_clone(remote_url: &str, cache: &Path) -> Result<(), String> {
+    // Remove any existing (possibly corrupted) directory
+    if cache.exists() {
+        std::fs::remove_dir_all(cache)
+            .map_err(|e| format!("Failed to clean cache dir: {}", e))?;
+    }
+
+    // Ensure parent directory exists
+    let parent = cache.parent().ok_or("Invalid cache path")?;
+    std::fs::create_dir_all(parent)
+        .map_err(|e| format!("Failed to create parent dir: {}", e))?;
+
+    let dir_name = cache
+        .file_name()
+        .ok_or("Invalid cache path")?
+        .to_string_lossy()
+        .to_string();
+
+    let output = Command::new("git")
+        .args(["clone", "--depth", "1", remote_url, &dir_name])
+        .current_dir(parent)
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("Failed to run git clone: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        // Clean up partial clone
+        let _ = std::fs::remove_dir_all(cache);
+        return Err(format!("git clone failed: {}", stderr));
+    }
+
+    Ok(())
+}
 
 /// Clone or pull a remote repository to a local cache directory
 pub fn sync_repo(remote_url: &str, cache_path: &str) -> Result<(), String> {
     let cache = Path::new(cache_path);
 
-    if cache.join(".git").exists() {
-        // git pull
+    if is_valid_git_repo(cache) {
+        // Valid repo exists → pull
         let output = Command::new("git")
             .args(["pull", "--ff-only"])
             .current_dir(cache)
+            .stderr(Stdio::piped())
             .output()
             .map_err(|e| format!("Failed to run git pull: {}", e))?;
 
@@ -19,16 +71,20 @@ pub fn sync_repo(remote_url: &str, cache_path: &str) -> Result<(), String> {
             let fetch_output = Command::new("git")
                 .args(["fetch", "origin"])
                 .current_dir(cache)
+                .stderr(Stdio::piped())
                 .output()
                 .map_err(|e| format!("Failed to run git fetch: {}", e))?;
 
             if !fetch_output.status.success() {
-                return Err(format!("git fetch failed: {}", stderr));
+                // fetch also failed — repo may be corrupted, fall back to fresh clone
+                eprintln!("Pull/fetch failed for '{}', re-cloning: {}", cache_path, stderr);
+                return git_clone(remote_url, cache);
             }
 
             let reset_output = Command::new("git")
                 .args(["reset", "--hard", "origin/HEAD"])
                 .current_dir(cache)
+                .stderr(Stdio::piped())
                 .output()
                 .map_err(|e| format!("Failed to run git reset: {}", e))?;
 
@@ -38,27 +94,8 @@ pub fn sync_repo(remote_url: &str, cache_path: &str) -> Result<(), String> {
             }
         }
     } else {
-        // git clone
-        std::fs::create_dir_all(cache)
-            .map_err(|e| format!("Failed to create cache dir: {}", e))?;
-
-        let parent = cache.parent().ok_or("Invalid cache path")?;
-        let dir_name = cache
-            .file_name()
-            .ok_or("Invalid cache path")?
-            .to_string_lossy()
-            .to_string();
-
-        let output = Command::new("git")
-            .args(["clone", remote_url, &dir_name])
-            .current_dir(parent)
-            .output()
-            .map_err(|e| format!("Failed to run git clone: {}", e))?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("git clone failed: {}", stderr));
-        }
+        // No valid repo → clone
+        git_clone(remote_url, cache)?;
     }
 
     Ok(())

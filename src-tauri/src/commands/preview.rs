@@ -3,6 +3,7 @@ use std::path::Path;
 use tauri::State;
 
 use crate::commands::config::AppState;
+use crate::services::skill_service;
 
 #[derive(Serialize)]
 pub struct FileNode {
@@ -10,6 +11,40 @@ pub struct FileNode {
     pub path: String,
     pub is_dir: bool,
     pub children: Option<Vec<FileNode>>,
+}
+
+/// Resolve the actual directory of a skill: check local first, then all remote repos
+fn find_skill_dir(
+    config: &crate::models::config::AppConfig,
+    skill_name: &str,
+    target: &str,
+) -> Option<std::path::PathBuf> {
+    // 1. Check local installed skill
+    let target_dir = if target == "global" {
+        config.active_global_path()
+    } else {
+        config.active_project_dir(target)
+    };
+    let local_path = Path::new(&target_dir).join(skill_name);
+    if local_path.exists() {
+        return Some(local_path);
+    }
+
+    // 2. Search all enabled remote repos
+    for repo in &config.repos {
+        if !repo.enabled {
+            continue;
+        }
+        let entries = skill_service::load_skill_entries(&repo.cache_path);
+        if let Some(entry) = entries.iter().find(|e| e.name == skill_name) {
+            let remote_path = Path::new(&repo.cache_path).join(&entry.path);
+            if remote_path.exists() {
+                return Some(remote_path);
+            }
+        }
+    }
+
+    None
 }
 
 /// List all files in a skill directory as a tree
@@ -20,23 +55,9 @@ pub fn get_skill_file_tree(
     target: String,
 ) -> Result<Vec<FileNode>, String> {
     let config = state.config.lock().map_err(|e| e.to_string())?;
-    let cache_path = config.cache_path.clone();
-    let global_path = config.active_global_path();
-    let project_dir = config.active_project_dir(&target);
+    let skill_dir = find_skill_dir(&config, &skill_name, &target)
+        .ok_or_else(|| format!("Skill '{}' not found locally or remotely", skill_name))?;
     drop(config);
-
-    let target_dir = if target == "global" { global_path } else { project_dir };
-
-    let local_path = Path::new(&target_dir).join(&skill_name);
-    let remote_path = Path::new(&cache_path).join("skills").join(&skill_name);
-
-    let skill_dir = if local_path.exists() {
-        local_path
-    } else if remote_path.exists() {
-        remote_path
-    } else {
-        return Err(format!("Skill '{}' not found locally or remotely", skill_name));
-    };
 
     build_file_tree(&skill_dir, &skill_dir)
 }
@@ -87,23 +108,11 @@ pub fn read_skill_file(
     target: String,
 ) -> Result<String, String> {
     let config = state.config.lock().map_err(|e| e.to_string())?;
-    let cache_path = config.cache_path.clone();
-    let global_path = config.active_global_path();
-    let project_dir = config.active_project_dir(&target);
+    let skill_dir = find_skill_dir(&config, &skill_name, &target)
+        .ok_or_else(|| format!("Skill '{}' not found locally or remotely", skill_name))?;
     drop(config);
 
-    let target_dir = if target == "global" { global_path } else { project_dir };
-
-    let local_base = Path::new(&target_dir).join(&skill_name);
-    let remote_base = Path::new(&cache_path).join("skills").join(&skill_name);
-
-    let full_path = local_base.join(&file_path);
-    let full_path = if full_path.exists() {
-        full_path
-    } else {
-        remote_base.join(&file_path)
-    };
-
+    let full_path = skill_dir.join(&file_path);
     if !full_path.exists() {
         return Err(format!("File '{}' not found", file_path));
     }

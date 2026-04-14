@@ -12,6 +12,102 @@ pub fn parse_manifest(repo_path: &str) -> Result<SkillsManifest, String> {
     serde_json::from_str(&content).map_err(|e| format!("Parse skills.json: {}", e))
 }
 
+/// Scan a directory for skill folders containing SKILL.md (fallback for repos without skills.json)
+/// Checks both the root level and a `skills/` subdirectory
+pub fn scan_skills_from_dirs(repo_path: &str) -> Vec<SkillManifestEntry> {
+    let root = Path::new(repo_path);
+    let mut entries = Vec::new();
+
+    // Collect candidate directories: root subdirs + skills/ subdirs
+    let mut scan_dirs: Vec<std::path::PathBuf> = Vec::new();
+
+    // Root level subdirectories
+    if let Ok(rd) = std::fs::read_dir(root) {
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                if let Some(name) = e.file_name().to_str() {
+                    if !name.starts_with('.') && name != "skills" {
+                        scan_dirs.push(p);
+                    }
+                }
+            }
+        }
+    }
+
+    // skills/ subdirectory (e.g. anthropics/skills repo)
+    let skills_subdir = root.join("skills");
+    if skills_subdir.is_dir() {
+        if let Ok(rd) = std::fs::read_dir(&skills_subdir) {
+            for e in rd.flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    if let Some(name) = e.file_name().to_str() {
+                        if !name.starts_with('.') {
+                            scan_dirs.push(p);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // For each candidate, check if it has SKILL.md
+    for dir in &scan_dirs {
+        let skill_md = dir.join("SKILL.md");
+        if !skill_md.exists() {
+            continue;
+        }
+
+        let dir_name = dir
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        // Try to parse frontmatter for metadata
+        let fm = parse_skill_frontmatter(&dir.to_string_lossy()).ok();
+
+        let name = fm.as_ref().map(|f| f.name.clone())
+            .filter(|n| !n.is_empty())
+            .unwrap_or_else(|| dir_name.clone());
+
+        let path = dir.strip_prefix(root)
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or(dir_name.clone());
+
+        entries.push(SkillManifestEntry {
+            name,
+            path,
+            version: fm.as_ref().map(|f| f.version.clone()).unwrap_or_default(),
+            description: fm.as_ref().map(|f| f.description.clone()).unwrap_or_default(),
+            tags: fm.as_ref().map(|f| f.tags.clone()).unwrap_or_default(),
+            updated_at: fm.as_ref().and_then(|f| f.updated_at.clone()),
+            checksum: None,
+        });
+    }
+
+    entries
+}
+
+/// Load skill entries from a repo: try skills.json first, fall back to directory scanning
+pub fn load_skill_entries(repo_path: &str) -> Vec<SkillManifestEntry> {
+    // Try standard skills.json manifest first
+    if let Ok(manifest) = parse_manifest(repo_path) {
+        return manifest.skills;
+    }
+
+    // Fallback: scan directories for SKILL.md
+    let entries = scan_skills_from_dirs(repo_path);
+    if !entries.is_empty() {
+        eprintln!(
+            "No skills.json found in '{}', discovered {} skills via directory scan",
+            repo_path,
+            entries.len()
+        );
+    }
+    entries
+}
+
 /// Parse SKILL.md YAML frontmatter from a skill directory
 pub fn parse_skill_frontmatter(skill_dir: &str) -> Result<SkillFrontmatter, String> {
     let skill_md_path = Path::new(skill_dir).join("SKILL.md");
@@ -86,6 +182,7 @@ fn parse_simple_yaml_frontmatter(yaml: &str) -> Result<SkillFrontmatter, String>
 pub fn build_remote_skill_meta(
     repo_path: &str,
     entry: &SkillManifestEntry,
+    repo_id: Option<&str>,
 ) -> Result<SkillMeta, String> {
     let skill_dir = Path::new(repo_path).join(&entry.path);
 
@@ -123,6 +220,7 @@ pub fn build_remote_skill_meta(
         checksum: checksum.or_else(|| entry.checksum.clone()),
         files: None,
         install_status: Some(InstallStatus::NotInstalled),
+        source_repo_id: repo_id.map(|s| s.to_string()),
     })
 }
 
@@ -145,6 +243,7 @@ pub fn build_local_skill_meta(
             checksum: None,
             files: None,
             install_status: Some(InstallStatus::NotInstalled),
+            source_repo_id: None,
         });
     }
 
@@ -181,13 +280,14 @@ pub fn build_local_skill_meta(
         checksum,
         files: None,
         install_status: None,
+        source_repo_id: None,
     })
 }
 
-/// Build comparison list pairing local and remote skills
+/// Build comparison list pairing local and remote skills from multiple repos
 pub fn build_skill_comparisons(
     local_dir: &str,
-    cache_path: &str,
+    repos: &[crate::models::config::RepoConfig],
 ) -> Result<Vec<crate::models::skill::SkillComparison>, String> {
     use crate::models::skill::{ComparisonStatus, SkillComparison};
 
@@ -200,65 +300,69 @@ pub fn build_skill_comparisons(
         }
     }
 
-    // Load remote skills
-    let remote_skills: Vec<SkillMeta> = parse_manifest(cache_path)
-        .map(|manifest| {
-            manifest
-                .skills
-                .iter()
-                .filter_map(|e| build_remote_skill_meta(cache_path, e).ok())
-                .collect()
-        })
-        .unwrap_or_default();
-
-    let mut remote_map: std::collections::HashMap<String, SkillMeta> = std::collections::HashMap::new();
-    for skill in &remote_skills {
-        remote_map.insert(skill.name.clone(), skill.clone());
-    }
-
-    // Build comparison: collect all unique names
-    let mut all_names: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-    for name in local_map.keys() {
-        all_names.insert(name.clone());
-    }
-    for name in remote_map.keys() {
-        all_names.insert(name.clone());
+    // Load remote skills from all enabled repos (don't deduplicate by name)
+    let mut all_remote_skills: Vec<SkillMeta> = Vec::new();
+    for repo in repos {
+        if !repo.enabled {
+            continue;
+        }
+        let entries = load_skill_entries(&repo.cache_path);
+        for entry in &entries {
+            if let Ok(meta) = build_remote_skill_meta(&repo.cache_path, entry, Some(&repo.id)) {
+                all_remote_skills.push(meta);
+            }
+        }
     }
 
     let mut comparisons = Vec::new();
 
-    for name in &all_names {
-        let local = local_map.get(name).cloned();
-        let remote = remote_map.get(name).cloned();
+    // Track which local skills have been matched with at least one remote
+    let mut local_matched = std::collections::HashSet::new();
 
-        let status = match (&local, &remote) {
+    // For each remote skill, create a comparison entry
+    for remote in &all_remote_skills {
+        let local = local_map.get(&remote.name).cloned();
+
+        if local.is_some() {
+            local_matched.insert(remote.name.clone());
+        }
+
+        let status = match (&local, Some(remote)) {
             (Some(l), Some(r)) => {
-                // Both exist: compare version and hash
-                let version_match = !l.version.is_empty() && l.version == r.version;
                 let hash_match = match (&l.checksum, &r.checksum) {
                     (Some(lc), Some(rc)) => lc.value == rc.value,
                     _ => false,
                 };
-
-                if version_match && hash_match {
+                // Hash match is the primary indicator: same content = no update needed
+                if hash_match {
                     ComparisonStatus::Same
-                } else if version_match && !hash_match {
-                    ComparisonStatus::Outdated // Same version but different content
                 } else {
                     ComparisonStatus::Outdated
                 }
             }
-            (Some(_), None) => ComparisonStatus::LocalOnly,
-            (None, Some(_)) => ComparisonStatus::RemoteOnly,
-            (None, None) => ComparisonStatus::Unknown,
+            _ => ComparisonStatus::RemoteOnly,
         };
 
         comparisons.push(SkillComparison {
-            name: name.clone(),
+            name: remote.name.clone(),
             local,
-            remote,
+            remote: Some(remote.clone()),
             status,
+            source_repo_id: remote.source_repo_id.clone(),
         });
+    }
+
+    // Add local-only skills (no remote match in any repo)
+    for (name, local) in &local_map {
+        if !local_matched.contains(name) {
+            comparisons.push(SkillComparison {
+                name: name.clone(),
+                local: Some(local.clone()),
+                remote: None,
+                status: ComparisonStatus::LocalOnly,
+                source_repo_id: None,
+            });
+        }
     }
 
     Ok(comparisons)
@@ -343,7 +447,7 @@ pub struct ProjectSkillSummary {
 /// Build skill summary for multiple projects
 pub fn build_projects_overview(
     project_paths: &[String],
-    cache_path: &str,
+    repos: &[crate::models::config::RepoConfig],
     _active_id: &str,
     agent_project_patterns: &std::collections::HashMap<String, String>,
 ) -> Result<Vec<ProjectSkillSummary>, String> {
@@ -366,10 +470,17 @@ pub fn build_projects_overview(
 
         let local_count = local_names.len();
 
-        // Load remote names for matching
-        let remote_names: std::collections::HashSet<String> = parse_manifest(cache_path)
-            .map(|m| m.skills.iter().map(|s| s.name.clone()).collect())
-            .unwrap_or_default();
+        // Load remote names from all enabled repos
+        let mut remote_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for repo in repos {
+            if !repo.enabled {
+                continue;
+            }
+            let entries = load_skill_entries(&repo.cache_path);
+            for s in &entries {
+                remote_names.insert(s.name.clone());
+            }
+        }
 
         let mut matched = 0usize;
         let mut outdated = 0usize;
@@ -377,8 +488,7 @@ pub fn build_projects_overview(
 
         for name in &local_names {
             if remote_names.contains(name) {
-                // Check if outdated by comparing versions
-                if let Ok(comparisons) = build_skill_comparisons(&skills_dir, cache_path) {
+                if let Ok(comparisons) = build_skill_comparisons(&skills_dir, repos) {
                     if let Some(comp) = comparisons.iter().find(|c| &c.name == name) {
                         match comp.status {
                             crate::models::skill::ComparisonStatus::Same => matched += 1,

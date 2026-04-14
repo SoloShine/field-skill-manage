@@ -4,11 +4,41 @@ use crate::models::config::{AgentType, AppConfig};
 
 pub struct AppState {
     pub config: Mutex<AppConfig>,
+    pub config_path: String,
+}
+
+/// Read config from disk, or return default if file doesn't exist
+pub fn load_config_from_disk(path: &str) -> AppConfig {
+    let content = match std::fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(_) => return AppConfig::default(),
+    };
+    match serde_json::from_str(&content) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("Warning: Failed to parse config file {}: {}. Using defaults.", path, e);
+            AppConfig::default()
+        }
+    }
+}
+
+/// Save config to disk
+fn save_config_to_disk(path: &str, config: &AppConfig) -> Result<(), String> {
+    // Ensure parent directory exists
+    if let Some(parent) = std::path::Path::new(path).parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create config dir: {}", e))?;
+    }
+    let json = serde_json::to_string_pretty(config)
+        .map_err(|e| format!("Failed to serialize config: {}", e))?;
+    std::fs::write(path, json)
+        .map_err(|e| format!("Failed to write config file: {}", e))
 }
 
 #[tauri::command]
 pub fn get_config(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
-    let config = state.config.lock().map_err(|e| e.to_string())?;
+    let mut config = state.config.lock().map_err(|e| e.to_string())?;
+    config.migrate_repos();
     Ok(config.clone())
 }
 
@@ -17,6 +47,10 @@ pub fn set_config(
     state: tauri::State<'_, AppState>,
     config: AppConfig,
 ) -> Result<(), String> {
+    // Save to disk first
+    save_config_to_disk(&state.config_path, &config)?;
+
+    // Then update in-memory
     let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
     *cfg = config;
     Ok(())
@@ -65,15 +99,18 @@ pub fn add_custom_agent(
     global_path: String,
     project_pattern: String,
 ) -> Result<(), String> {
-    let mut config = state.config.lock().map_err(|e| e.to_string())?;
     // Don't allow overriding built-in ids
     for agent in AgentType::all() {
         if agent.id() == id {
             return Err(format!("Cannot use built-in agent id '{}'", id));
         }
     }
+    let mut config = state.config.lock().map_err(|e| e.to_string())?;
     config.add_custom_agent(id, display_name, global_path, project_pattern);
-    Ok(())
+    drop(config);
+    // Persist: re-read and save
+    let cfg = state.config.lock().map_err(|e| e.to_string())?;
+    save_config_to_disk(&state.config_path, &cfg)
 }
 
 /// Remove a custom agent
@@ -84,7 +121,9 @@ pub fn remove_custom_agent(
 ) -> Result<(), String> {
     let mut config = state.config.lock().map_err(|e| e.to_string())?;
     config.remove_custom_agent(&id);
-    Ok(())
+    drop(config);
+    let cfg = state.config.lock().map_err(|e| e.to_string())?;
+    save_config_to_disk(&state.config_path, &cfg)
 }
 
 #[derive(serde::Serialize)]

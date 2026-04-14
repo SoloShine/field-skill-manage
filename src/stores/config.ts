@@ -13,6 +13,7 @@ export const useConfigStore = defineStore('config', () => {
     agent_project_patterns: {},
     agent_display_names: {},
     custom_agent_ids: [],
+    repos: [],
   })
   const allAgents = ref<AgentInfo[]>([])
   const loading = ref(false)

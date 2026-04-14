@@ -4,12 +4,26 @@ mod services;
 
 use commands::{config, git_sync, preview, skill, update, version};
 use commands::config::AppState;
-use models::config::AppConfig;
 use std::sync::Mutex;
+
+fn get_home() -> String {
+    std::env::var("USERPROFILE")
+        .or_else(|_| std::env::var("HOME"))
+        .unwrap_or_else(|_| ".".to_string())
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let app_config = AppConfig::default();
+    // Config file: <home>/.spm/config.json
+    let home = get_home();
+    let config_dir = format!("{}/.spm", home);
+    let config_path = format!("{}/.spm/config.json", home);
+
+    // Ensure config directory exists
+    std::fs::create_dir_all(&config_dir).ok();
+
+    // Load config from disk (or use defaults)
+    let app_config = config::load_config_from_disk(&config_path);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -17,6 +31,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .manage(AppState {
             config: Mutex::new(app_config),
+            config_path,
         })
         .invoke_handler(tauri::generate_handler![
             // Config

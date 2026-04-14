@@ -23,11 +23,20 @@ export interface SkillMeta {
   checksum?: Checksum
   files?: FileEntry[]
   install_status?: InstallStatus
+  source_repo_id?: string
 }
 
 export interface AgentInfo {
   id: string
   display_name: string
+}
+
+export interface RepoConfig {
+  id: string
+  name: string
+  url: string
+  cache_path: string
+  enabled: boolean
 }
 
 export interface AppConfig {
@@ -39,6 +48,7 @@ export interface AppConfig {
   agent_project_patterns: Record<string, string>
   agent_display_names: Record<string, string>
   custom_agent_ids: string[]
+  repos: RepoConfig[]
 }
 
 export type ComparisonStatus = 'Same' | 'Outdated' | 'LocalOnly' | 'RemoteOnly' | 'Unknown'
@@ -48,6 +58,7 @@ export interface SkillComparison {
   local: SkillMeta | null
   remote: SkillMeta | null
   status: ComparisonStatus
+  source_repo_id?: string
 }
 
 export interface ProjectSkillSummary {
@@ -57,6 +68,12 @@ export interface ProjectSkillSummary {
   matched_count: number
   outdated_count: number
   remote_only_count: number
+}
+
+export interface SyncResult {
+  success_count: number
+  fail_count: number
+  errors: string[]
 }
 
 export interface UpdateInfo {

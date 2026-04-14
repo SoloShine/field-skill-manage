@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import type { SkillComparison, ProjectSkillSummary } from '@/types'
+import type { SkillComparison, ProjectSkillSummary, SyncResult } from '@/types'
 
 export const useSkillStore = defineStore('skill', () => {
   const globalComparisons = ref<SkillComparison[]>([])
@@ -9,11 +9,12 @@ export const useSkillStore = defineStore('skill', () => {
   const projectsOverview = ref<ProjectSkillSummary[]>([])
   const syncing = ref(false)
   const loading = ref(false)
+  const lastSyncResult = ref<SyncResult | null>(null)
 
   async function syncRemote() {
     syncing.value = true
     try {
-      await invoke('sync_remote_repo')
+      lastSyncResult.value = await invoke<SyncResult>('sync_remote_repo')
     } finally {
       syncing.value = false
     }
@@ -50,16 +51,16 @@ export const useSkillStore = defineStore('skill', () => {
     }
   }
 
-  async function installSkill(name: string, target: string) {
-    await invoke('install_skill', { skillName: name, target })
+  async function installSkill(name: string, target: string, repoId?: string) {
+    await invoke('install_skill', { skillName: name, target, repoId: repoId || null })
   }
 
-  async function updateSkill(name: string, target: string) {
-    await invoke('update_skill', { skillName: name, target })
+  async function updateSkill(name: string, target: string, repoId?: string) {
+    await invoke('update_skill', { skillName: name, target, repoId: repoId || null })
   }
 
-  async function batchUpdate(names: string[], target: string) {
-    return await invoke<string[]>('batch_update', { skillNames: names, target })
+  async function batchUpdate(names: string[], target: string, repoId?: string) {
+    return await invoke<string[]>('batch_update', { skillNames: names, target, repoId: repoId || null })
   }
 
   async function uninstallSkill(name: string, target: string) {
@@ -72,6 +73,7 @@ export const useSkillStore = defineStore('skill', () => {
     projectsOverview,
     syncing,
     loading,
+    lastSyncResult,
     syncRemote,
     loadGlobalSkills,
     loadProjectSkills,
