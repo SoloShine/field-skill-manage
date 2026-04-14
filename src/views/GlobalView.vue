@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch, reactive } from 'vue'
 import { NButton, NInput, NSpace, NSelect, NSpin, useMessage } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
@@ -22,6 +22,8 @@ const tableHeight = ref(400)
 const viewRef = ref<HTMLElement | null>(null)
 const headerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
+
+const operatingKeys = reactive(new Set<string>())
 
 function handleSearchShortcut(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -79,32 +81,41 @@ async function handleSync() {
 }
 
 async function handleInstall(name: string, _target: string, repoId?: string) {
+  operatingKeys.add(name)
   try {
     await skillStore.installSkill(name, 'global', repoId)
     await skillStore.loadGlobalSkills()
     message.success(t('global.installSuccess', { name }))
   } catch (e: any) {
     message.error(t('global.installFailed', { error: e }))
+  } finally {
+    operatingKeys.delete(name)
   }
 }
 
 async function handleUpdate(name: string, _target: string, repoId?: string) {
+  operatingKeys.add(name)
   try {
     await skillStore.updateSkill(name, 'global', repoId)
     await skillStore.loadGlobalSkills()
     message.success(t('global.updateSuccess', { name }))
   } catch (e: any) {
     message.error(t('global.updateFailed', { error: e }))
+  } finally {
+    operatingKeys.delete(name)
   }
 }
 
 async function handleUninstall(name: string) {
+  operatingKeys.add(name)
   try {
     await skillStore.uninstallSkill(name, 'global')
     await skillStore.loadGlobalSkills()
     message.success(t('global.uninstallSuccess', { name }))
   } catch (e: any) {
     message.error(t('global.uninstallFailed', { error: e }))
+  } finally {
+    operatingKeys.delete(name)
   }
 }
 
@@ -221,6 +232,7 @@ onUnmounted(() => {
         :comparisons="filtered"
         target="global"
         :max-height="tableHeight"
+        :operating-keys="operatingKeys"
         @install="handleInstall"
         @update="handleUpdate"
         @uninstall="handleUninstall"

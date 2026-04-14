@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { NButton, NInput, NSpin, NBreadcrumb, NBreadcrumbItem, NText, useMessage } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
@@ -26,6 +26,8 @@ const tableHeight = ref(400)
 const viewRef = ref<HTMLElement | null>(null)
 const headerRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
+
+const operatingKeys = reactive(new Set<string>())
 
 function handleSearchShortcut(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -88,34 +90,43 @@ async function handleSync() {
 
 async function handleInstall(name: string) {
   if (!projectStore.projectPath) return
+  operatingKeys.add(name)
   try {
     await skillStore.installSkill(name, projectStore.projectPath)
     await loadProjectSkills()
     message.success(t('global.installSuccess', { name }))
   } catch (e: any) {
     message.error(t('global.installFailed', { error: e }))
+  } finally {
+    operatingKeys.delete(name)
   }
 }
 
 async function handleUpdate(name: string) {
   if (!projectStore.projectPath) return
+  operatingKeys.add(name)
   try {
     await skillStore.updateSkill(name, projectStore.projectPath)
     await loadProjectSkills()
     message.success(t('global.updateSuccess', { name }))
   } catch (e: any) {
     message.error(t('global.updateFailed', { error: e }))
+  } finally {
+    operatingKeys.delete(name)
   }
 }
 
 async function handleUninstall(name: string) {
   if (!projectStore.projectPath) return
+  operatingKeys.add(name)
   try {
     await skillStore.uninstallSkill(name, projectStore.projectPath)
     await loadProjectSkills()
     message.success(t('global.uninstallSuccess', { name }))
   } catch (e: any) {
     message.error(t('global.uninstallFailed', { error: e }))
+  } finally {
+    operatingKeys.delete(name)
   }
 }
 
@@ -200,6 +211,7 @@ onUnmounted(() => {
         :comparisons="filtered"
         :target="projectStore.projectPath"
         :max-height="tableHeight"
+        :operating-keys="operatingKeys"
         @install="handleInstall"
         @update="handleUpdate"
         @uninstall="handleUninstall"

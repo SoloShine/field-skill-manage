@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
-import { NMenu, NSelect, NText, NButton, NSpin, NIcon } from 'naive-ui'
+import { NMenu, NSelect, NText, NButton, NSpin, NIcon, useMessage } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
 import { useUpdateStore } from '@/stores/update'
@@ -19,6 +19,7 @@ const updateStore = useUpdateStore()
 const { t } = useI18n()
 const { currentLocale, setLocale } = useLocale()
 const { isDark, toggleTheme } = useTheme()
+const message = useMessage()
 
 const menuOptions = computed<MenuOption[]>(() => [
   { label: () => t('nav.global'), key: 'global', icon: () => h(NIcon, { size: 18 }, () => h(GlobeOutline)) },
@@ -40,7 +41,11 @@ const localeOptions = SUPPORTED_LOCALES.map((l) => ({
 
 const selectedAgent = computed({
   get: () => configStore.config.active_agent_id,
-  set: (val: string) => configStore.setActiveAgent(val),
+  set: (val: string) => {
+    const displayName = configStore.allAgents.find(a => a.id === val)?.display_name || val
+    configStore.setActiveAgent(val)
+    message.info(t('sidebar.agentSwitched', { name: displayName }))
+  },
 })
 
 function handleMenuSelect(key: string) {

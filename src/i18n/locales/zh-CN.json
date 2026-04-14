@@ -6,7 +6,8 @@
   },
   "sidebar": {
     "currentAgent": "当前 Agent",
-    "selectAgent": "选择 Agent"
+    "selectAgent": "选择 Agent",
+    "agentSwitched": "已切换到 {name}，正在重新加载..."
   },
   "common": {
     "search": "搜索...",
@@ -185,6 +186,9 @@
     "batchInstall": "批量安装",
     "batchUpdate": "批量更新",
     "batchUninstall": "批量卸载",
+    "confirmBatchInstall": "确认批量安装 {count} 个 skill？",
+    "confirmBatchUpdate": "确认批量更新 {count} 个 skill？",
+    "confirmBatchUninstall": "确认批量卸载 {count} 个 skill？此操作不可撤销",
     "clearSelection": "取消选择"
   },
   "skillCard": {

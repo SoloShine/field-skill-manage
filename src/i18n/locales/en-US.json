@@ -6,7 +6,8 @@
   },
   "sidebar": {
     "currentAgent": "Current Agent",
-    "selectAgent": "Select Agent"
+    "selectAgent": "Select Agent",
+    "agentSwitched": "Switched to {name}, reloading..."
   },
   "common": {
     "search": "Search...",
@@ -185,6 +186,9 @@
     "batchInstall": "Batch Install",
     "batchUpdate": "Batch Update",
     "batchUninstall": "Batch Uninstall",
+    "confirmBatchInstall": "Install {count} skill(s)?",
+    "confirmBatchUpdate": "Update {count} skill(s)?",
+    "confirmBatchUninstall": "Uninstall {count} skill(s)? This cannot be undone",
     "clearSelection": "Clear"
   },
   "skillCard": {

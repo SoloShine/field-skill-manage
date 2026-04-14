@@ -6,9 +6,10 @@ import {
   NSpace,
   NTooltip,
   NText,
+  NPopconfirm,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
-import { h, computed, ref } from 'vue'
+import { h, computed, ref, reactive } from 'vue'
 import type { SkillComparison, SkillMeta, ComparisonStatus } from '@/types'
 import { useI18n } from 'vue-i18n'
 import { useConfigStore } from '@/stores/config'
@@ -21,6 +22,7 @@ const props = defineProps<{
   target: string
   maxHeight?: number
   flexHeight?: boolean
+  operatingKeys?: Set<string>
 }>()
 
 const emit = defineEmits<{
@@ -121,33 +123,34 @@ function repoCell(row: SkillComparison) {
 function actionsCell(row: SkillComparison) {
   const buttons: ReturnType<typeof h>[] = []
   const repoId = row.source_repo_id || undefined
+  const isLoading = props.operatingKeys?.has(row.name) ?? false
 
   if (row.local || row.remote) {
     buttons.push(
-      h(NButton, { size: 'tiny', quaternary: true, onClick: () => emit('preview', row.name, repoId) }, () => t('common.preview'))
+      h(NButton, { size: 'tiny', quaternary: true, disabled: isLoading, onClick: () => emit('preview', row.name, repoId) }, () => t('common.preview'))
     )
   }
 
   if (row.status === 'RemoteOnly') {
     buttons.push(
-      h(NButton, { type: 'primary', size: 'tiny', onClick: () => emit('install', row.name, props.target, repoId) }, () => t('common.install'))
+      h(NButton, { type: 'primary', size: 'tiny', loading: isLoading, onClick: () => emit('install', row.name, props.target, repoId) }, () => t('common.install'))
     )
   }
 
   if (row.status === 'Outdated') {
     buttons.push(
-      h(NButton, { type: 'warning', size: 'tiny', onClick: () => emit('update', row.name, props.target, repoId) }, () => t('common.update'))
+      h(NButton, { type: 'warning', size: 'tiny', loading: isLoading, onClick: () => emit('update', row.name, props.target, repoId) }, () => t('common.update'))
     )
   }
 
   if (row.local) {
     if (row.status === 'Same') {
       buttons.push(
-        h(NButton, { size: 'tiny', onClick: () => emit('update', row.name, props.target, repoId) }, () => t('common.reinstallShort'))
+        h(NButton, { size: 'tiny', loading: isLoading, onClick: () => emit('update', row.name, props.target, repoId) }, () => t('common.reinstallShort'))
       )
     }
     buttons.push(
-      h(NButton, { size: 'tiny', type: 'error', ghost: true, onClick: () => emit('uninstall', row.name, props.target) }, () => t('common.uninstall'))
+      h(NButton, { size: 'tiny', type: 'error', ghost: true, loading: isLoading, onClick: () => emit('uninstall', row.name, props.target) }, () => t('common.uninstall'))
     )
   }
 
@@ -234,15 +237,30 @@ const columns = computed<DataTableColumns<SkillComparison>>(() => [
     <div v-if="checkedRowKeys.length > 0" class="selection-bar">
       <NText>{{ t('table.selected', { count: checkedRowKeys.length }) }}</NText>
       <NSpace size="small">
-        <NButton v-if="canBatchInstall" type="primary" size="small" @click="handleBatchInstall">
-          {{ t('table.batchInstall') }}
-        </NButton>
-        <NButton v-if="canBatchUpdate" type="warning" size="small" @click="handleBatchUpdate">
-          {{ t('table.batchUpdate') }}
-        </NButton>
-        <NButton v-if="canBatchUninstall" type="error" size="small" ghost @click="handleBatchUninstall">
-          {{ t('table.batchUninstall') }}
-        </NButton>
+        <NPopconfirm v-if="canBatchInstall" @positive-click="handleBatchInstall">
+          <template #trigger>
+            <NButton type="primary" size="small">
+              {{ t('table.batchInstall') }}
+            </NButton>
+          </template>
+          {{ t('table.confirmBatchInstall', { count: selectedRows.filter(r => r.status === 'RemoteOnly').length }) }}
+        </NPopconfirm>
+        <NPopconfirm v-if="canBatchUpdate" @positive-click="handleBatchUpdate">
+          <template #trigger>
+            <NButton type="warning" size="small">
+              {{ t('table.batchUpdate') }}
+            </NButton>
+          </template>
+          {{ t('table.confirmBatchUpdate', { count: selectedRows.filter(r => r.status === 'Outdated').length }) }}
+        </NPopconfirm>
+        <NPopconfirm v-if="canBatchUninstall" @positive-click="handleBatchUninstall">
+          <template #trigger>
+            <NButton type="error" size="small" ghost>
+              {{ t('table.batchUninstall') }}
+            </NButton>
+          </template>
+          {{ t('table.confirmBatchUninstall', { count: selectedRows.filter(r => r.local !== null).length }) }}
+        </NPopconfirm>
         <NButton size="small" @click="checkedRowKeys = []">
           {{ t('table.clearSelection') }}
         </NButton>
