@@ -7,12 +7,12 @@ import {
   NSpace,
   NTag,
   NText,
-  NEmpty,
   NSpin,
   NPopconfirm,
 } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
+import EmptyState from '@/components/common/EmptyState.vue'
 import { useProjectStore } from '@/stores/project'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useI18n } from 'vue-i18n'
@@ -123,7 +123,7 @@ onMounted(async () => {
         </NCard>
       </div>
 
-      <NEmpty v-else :description="t('project.emptyDesc')" style="margin-top: 40px" />
+      <EmptyState v-else :title="t('project.title')" :description="t('project.emptyDesc')" :action-label="t('project.emptyAction')" @action="handleAddProject" />
     </NSpin>
   </div>
 </template>

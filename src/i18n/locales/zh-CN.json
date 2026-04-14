@@ -64,7 +64,8 @@
     "noUpdatesNeeded": "没有需要更新的 skill",
     "updateAll": "全部更新 ({count})",
     "emptyTitle": "暂无 Skill",
-    "emptyDesc": "点击「同步远端」从远程仓库拉取 skill 列表"
+    "emptyDesc": "点击「同步远端」从远程仓库拉取 skill 列表",
+    "emptyAction": "同步远端"
   },
   "project": {
     "title": "项目管理",
@@ -72,6 +73,7 @@
     "confirmRemove": "确认从列表中移除该项目？",
     "viewDetail": "查看详情",
     "emptyDesc": "暂无项目，点击「添加项目」开始管理",
+    "emptyAction": "添加项目",
     "detailTitle": "项目详情",
     "skillTitle": "项目 Skill 管理",
     "selectPathTitle": "请选择项目路径",
@@ -80,7 +82,8 @@
     "emptyDesc2": "点击「同步远端」获取可用 skill 列表",
     "loadFailed": "加载失败: {error}",
     "emptySkillTitle": "暂无 Skill",
-    "emptySkillDesc": "点击「同步远端」获取可用 skill 列表"
+    "emptySkillDesc": "点击「同步远端」获取可用 skill 列表",
+    "emptySkillAction": "同步远端"
   },
   "settings": {
     "title": "设置",
@@ -145,7 +148,10 @@
     "accentColor": "主色调",
     "customColor": "自定义颜色",
     "customColorPlaceholder": "#3b82f6",
-    "invalidColor": "请输入有效的颜色值"
+    "invalidColor": "请输入有效的颜色值",
+    "tabGeneral": "常规",
+    "tabRepository": "仓库",
+    "tabAgents": "Agent"
   },
   "preview": {
     "fileList": "文件列表",
@@ -171,7 +177,12 @@
     "updatedTime": "更新时间",
     "description": "说明",
     "actions": "操作",
-    "none": "(无)"
+    "none": "(无)",
+    "selected": "已选 {count} 项",
+    "batchInstall": "批量安装",
+    "batchUpdate": "批量更新",
+    "batchUninstall": "批量卸载",
+    "clearSelection": "取消选择"
   },
   "skillCard": {
     "updated": "更新: {time}"

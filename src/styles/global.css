@@ -111,3 +111,27 @@ body {
 :root.dark ::-webkit-scrollbar-thumb:hover {
   background: #777777;
 }
+
+/* highlight.js dark mode */
+:root.dark .hljs {
+  background: var(--color-bg-code);
+  color: var(--color-text-primary);
+}
+:root.dark .hljs-keyword,
+:root.dark .hljs-selector-tag,
+:root.dark .hljs-literal,
+:root.dark .hljs-section,
+:root.dark .hljs-link { color: #ff7b72; }
+:root.dark .hljs-string,
+:root.dark .hljs-title,
+:root.dark .hljs-name,
+:root.dark .hljs-type,
+:root.dark .hljs-attribute { color: #a5d6ff; }
+:root.dark .hljs-number,
+:root.dark .hljs-symbol { color: #79c0ff; }
+:root.dark .hljs-comment,
+:root.dark .hljs-doctag { color: #8b949e; }
+:root.dark .hljs-variable,
+:root.dark .hljs-template-variable { color: #ffa657; }
+:root.dark .hljs-built_in { color: #ffa657; }
+:root.dark .hljs-meta { color: #79c0ff; }

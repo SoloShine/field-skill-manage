@@ -64,7 +64,8 @@
     "noUpdatesNeeded": "No skills need updating",
     "updateAll": "Update All ({count})",
     "emptyTitle": "No Skills",
-    "emptyDesc": "Click \"Sync Remote\" to fetch skills from the remote repository"
+    "emptyDesc": "Click \"Sync Remote\" to fetch skills from the remote repository",
+    "emptyAction": "Sync Remote"
   },
   "project": {
     "title": "Project Management",
@@ -72,6 +73,7 @@
     "confirmRemove": "Remove this project from the list?",
     "viewDetail": "View Details",
     "emptyDesc": "No projects yet. Click \"Add Project\" to get started.",
+    "emptyAction": "Add Project",
     "detailTitle": "Project Details",
     "skillTitle": "Project Skill Management",
     "selectPathTitle": "Select Project Path",
@@ -80,7 +82,8 @@
     "emptyDesc2": "Click \"Sync Remote\" to fetch available skills",
     "loadFailed": "Load failed: {error}",
     "emptySkillTitle": "No Skills",
-    "emptySkillDesc": "Click \"Sync Remote\" to fetch available skills"
+    "emptySkillDesc": "Click \"Sync Remote\" to fetch available skills",
+    "emptySkillAction": "Sync Remote"
   },
   "settings": {
     "title": "Settings",
@@ -145,7 +148,10 @@
     "accentColor": "Accent Color",
     "customColor": "Custom Color",
     "customColorPlaceholder": "#3b82f6",
-    "invalidColor": "Please enter a valid color"
+    "invalidColor": "Please enter a valid color",
+    "tabGeneral": "General",
+    "tabRepository": "Repository",
+    "tabAgents": "Agents"
   },
   "preview": {
     "fileList": "Files",
@@ -171,7 +177,12 @@
     "updatedTime": "Updated",
     "description": "Description",
     "actions": "Actions",
-    "none": "(none)"
+    "none": "(none)",
+    "selected": "{count} selected",
+    "batchInstall": "Batch Install",
+    "batchUpdate": "Batch Update",
+    "batchUninstall": "Batch Uninstall",
+    "clearSelection": "Clear"
   },
   "skillCard": {
     "updated": "Updated: {time}"

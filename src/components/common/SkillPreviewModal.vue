@@ -5,6 +5,30 @@ import type { TreeOption } from 'naive-ui'
 import { invoke } from '@tauri-apps/api/core'
 import { marked } from 'marked'
 import { useI18n } from 'vue-i18n'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
+import json from 'highlight.js/lib/languages/json'
+import yaml from 'highlight.js/lib/languages/yaml'
+import bash from 'highlight.js/lib/languages/bash'
+import xml from 'highlight.js/lib/languages/xml'
+import css from 'highlight.js/lib/languages/css'
+import markdown from 'highlight.js/lib/languages/markdown'
+import sql from 'highlight.js/lib/languages/sql'
+import 'highlight.js/styles/github.css'
+
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('yaml', yaml)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('html', xml)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('markdown', markdown)
+hljs.registerLanguage('sql', sql)
 
 const { t } = useI18n()
 
@@ -22,7 +46,6 @@ interface FrontmatterData {
   tags: string[]
   license: string
   updated_at: string
-  // catch-all for unknown keys
   extra: Record<string, string>
 }
 
@@ -45,7 +68,30 @@ const isMarkdown = computed(() => {
   return ext === 'md' || ext === 'mdx'
 })
 
-/// Parse YAML frontmatter into structured data
+function detectLanguage(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase() || ''
+  const map: Record<string, string> = {
+    ts: 'typescript', js: 'javascript', mjs: 'javascript',
+    py: 'python', json: 'json', yaml: 'yaml', yml: 'yaml',
+    sh: 'bash', bash: 'bash', xml: 'xml', html: 'xml', htm: 'xml',
+    css: 'css', md: 'markdown', mdx: 'markdown', sql: 'sql',
+  }
+  return map[ext] || ''
+}
+
+// Configure marked to highlight code blocks
+marked.use({
+  renderer: {
+    code({ text, lang }: { text: string; lang?: string }) {
+      const language = lang && hljs.getLanguage(lang) ? lang : ''
+      const highlighted = language
+        ? hljs.highlight(text, { language }).value
+        : hljs.highlightAuto(text).value
+      return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`
+    },
+  },
+})
+
 function parseFrontmatter(content: string): { fm: FrontmatterData | null; body: string } {
   const trimmed = content.trimStart()
   if (!trimmed.startsWith('---')) return { fm: null, body: content }
@@ -75,7 +121,6 @@ function parseFrontmatter(content: string): { fm: FrontmatterData | null; body: 
     const key = trimmedLine.slice(0, colon).trim()
     let val = trimmedLine.slice(colon + 1).trim()
 
-    // Handle list values like [a, b, c]
     if (val.startsWith('[') && val.endsWith(']')) {
       val = val.slice(1, -1)
       const items = val.split(',').map(s => s.trim()).filter(Boolean)
@@ -100,7 +145,6 @@ function parseFrontmatter(content: string): { fm: FrontmatterData | null; body: 
   return { fm, body }
 }
 
-/// Strip frontmatter, keep body only
 function stripFrontmatter(content: string): string {
   const trimmed = content.trimStart()
   if (!trimmed.startsWith('---')) return content
@@ -117,6 +161,22 @@ const renderedContent = computed(() => {
     return marked(cleaned) as string
   } catch {
     return `<p>${t('preview.renderFailed')}</p>`
+  }
+})
+
+const highlightedCode = computed(() => {
+  if (isMarkdown.value || !rawContent.value) return ''
+  const lang = detectLanguage(currentFile.value)
+  try {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(rawContent.value, { language: lang }).value
+    }
+    return hljs.highlightAuto(rawContent.value).value
+  } catch {
+    return rawContent.value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
   }
 })
 
@@ -162,7 +222,6 @@ async function loadFile(path: string) {
       target: props.target,
     })
     currentFile.value = path
-    // Parse frontmatter for SKILL.md
     if (path === 'SKILL.md' || path.endsWith('/SKILL.md')) {
       const { fm } = parseFrontmatter(rawContent.value)
       frontmatter.value = fm
@@ -219,7 +278,6 @@ onMounted(async () => {
         </div>
         <div class="file-content-scroll">
           <NSpin :show="loading" size="small">
-            <!-- Frontmatter metadata card for SKILL.md -->
             <div v-if="frontmatter" class="fm-card">
               <NDescriptions label-placement="left" bordered size="small" :column="1">
                 <NDescriptionsItem :label="t('preview.name')">
@@ -247,10 +305,8 @@ onMounted(async () => {
                 </NDescriptionsItem>
               </NDescriptions>
             </div>
-            <!-- Markdown rendered body -->
             <div v-if="isMarkdown && renderedContent" class="md-content" v-html="renderedContent" />
-            <!-- Raw content for non-markdown -->
-            <pre v-else-if="rawContent && !isMarkdown" class="raw-content">{{ rawContent }}</pre>
+            <pre v-else-if="rawContent && !isMarkdown" class="raw-content hljs" v-html="highlightedCode"></pre>
             <NEmpty v-else-if="!isMarkdown && !rawContent" :description="t('preview.selectFile')" size="small" />
           </NSpin>
         </div>
@@ -318,6 +374,10 @@ onMounted(async () => {
   border-radius: 6px;
   overflow-x: auto;
 }
+.md-content :deep(pre code) {
+  background: none;
+  padding: 0;
+}
 .md-content :deep(table) {
   border-collapse: collapse;
   width: 100%;
@@ -329,11 +389,11 @@ onMounted(async () => {
 }
 .raw-content {
   padding: 16px;
-  font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
   word-wrap: break-word;
   margin: 0;
+  background: var(--color-bg-code);
 }
 </style>

@@ -104,6 +104,22 @@ function handlePreview(name: string) {
   previewSkill.value = name
 }
 
+async function handleBatchInstall(names: string[]) {
+  for (const name of names) {
+    try { await skillStore.installSkill(name, projectStore.projectPath!) } catch { /* skip */ }
+  }
+  await loadProjectSkills()
+  message.success(t('global.syncComplete'))
+}
+
+async function handleBatchUninstall(names: string[]) {
+  for (const name of names) {
+    try { await skillStore.uninstallSkill(name, projectStore.projectPath!) } catch { /* skip */ }
+  }
+  await loadProjectSkills()
+  message.success(t('global.syncComplete'))
+}
+
 function updateTableHeight() {
   if (viewRef.value && headerRef.value) {
     const viewH = viewRef.value.clientHeight
@@ -162,8 +178,11 @@ onUnmounted(() => {
         @update="handleUpdate"
         @uninstall="handleUninstall"
         @preview="handlePreview"
+        @batch-install="handleBatchInstall"
+        @batch-update="(names: string[]) => { skillStore.batchUpdate(names, projectStore.projectPath!).then(() => loadProjectSkills()) }"
+        @batch-uninstall="handleBatchUninstall"
       />
-      <EmptyState v-else :title="t('project.emptySkillTitle')" :description="t('project.emptySkillDesc')" />
+      <EmptyState v-else :title="t('project.emptySkillTitle')" :description="t('project.emptySkillDesc')" :action-label="t('project.emptySkillAction')" @action="handleSync" />
     </NSpin>
 
     <SkillPreviewModal

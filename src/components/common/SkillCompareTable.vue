@@ -8,7 +8,7 @@ import {
   NText,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
-import { h, computed } from 'vue'
+import { h, computed, ref } from 'vue'
 import type { SkillComparison, SkillMeta, ComparisonStatus } from '@/types'
 import { useI18n } from 'vue-i18n'
 import { useConfigStore } from '@/stores/config'
@@ -28,7 +28,38 @@ const emit = defineEmits<{
   update: [name: string, target: string, repoId?: string]
   uninstall: [name: string, target: string]
   preview: [name: string, repoId?: string]
+  batchInstall: [names: string[], target: string]
+  batchUpdate: [names: string[], target: string]
+  batchUninstall: [names: string[], target: string]
 }>()
+
+const checkedRowKeys = ref<string[]>([])
+
+const rowKey = (row: SkillComparison) => row.name + '_' + (row.source_repo_id || '')
+
+const selectedRows = computed(() =>
+  props.comparisons.filter(row => checkedRowKeys.value.includes(rowKey(row)))
+)
+
+const canBatchInstall = computed(() => selectedRows.value.some(r => r.status === 'RemoteOnly'))
+const canBatchUpdate = computed(() => selectedRows.value.some(r => r.status === 'Outdated'))
+const canBatchUninstall = computed(() => selectedRows.value.some(r => r.local !== null))
+
+function handleBatchInstall() {
+  const names = selectedRows.value.filter(r => r.status === 'RemoteOnly').map(r => r.name)
+  emit('batchInstall', names, props.target)
+  checkedRowKeys.value = []
+}
+function handleBatchUpdate() {
+  const names = selectedRows.value.filter(r => r.status === 'Outdated').map(r => r.name)
+  emit('batchUpdate', names, props.target)
+  checkedRowKeys.value = []
+}
+function handleBatchUninstall() {
+  const names = selectedRows.value.filter(r => r.local !== null).map(r => r.name)
+  emit('batchUninstall', names, props.target)
+  checkedRowKeys.value = []
+}
 
 function truncateHash(hash?: string): string {
   if (!hash) return '-'
@@ -91,7 +122,6 @@ function actionsCell(row: SkillComparison) {
   const buttons: ReturnType<typeof h>[] = []
   const repoId = row.source_repo_id || undefined
 
-  // Preview button always available (shows remote if no local)
   if (row.local || row.remote) {
     buttons.push(
       h(NButton, { size: 'tiny', quaternary: true, onClick: () => emit('preview', row.name, repoId) }, () => t('common.preview'))
@@ -125,6 +155,9 @@ function actionsCell(row: SkillComparison) {
 }
 
 const columns = computed<DataTableColumns<SkillComparison>>(() => [
+  {
+    type: 'selection',
+  },
   {
     title: t('table.status'),
     key: 'status',
@@ -190,15 +223,52 @@ const columns = computed<DataTableColumns<SkillComparison>>(() => [
 </script>
 
 <template>
-  <NDataTable
-    :columns="columns"
-    :data="comparisons"
-    :bordered="false"
-    :scroll-x="1050"
-    :max-height="maxHeight"
-    :flex-height="flexHeight"
-    size="small"
-    striped
-    :row-key="(row: SkillComparison) => row.name + '_' + (row.source_repo_id || '')"
-  />
+  <div class="table-wrapper">
+    <div v-if="checkedRowKeys.length > 0" class="selection-bar">
+      <NText>{{ t('table.selected', { count: checkedRowKeys.length }) }}</NText>
+      <NSpace size="small">
+        <NButton v-if="canBatchInstall" type="primary" size="small" @click="handleBatchInstall">
+          {{ t('table.batchInstall') }}
+        </NButton>
+        <NButton v-if="canBatchUpdate" type="warning" size="small" @click="handleBatchUpdate">
+          {{ t('table.batchUpdate') }}
+        </NButton>
+        <NButton v-if="canBatchUninstall" type="error" size="small" ghost @click="handleBatchUninstall">
+          {{ t('table.batchUninstall') }}
+        </NButton>
+        <NButton size="small" @click="checkedRowKeys = []">
+          {{ t('table.clearSelection') }}
+        </NButton>
+      </NSpace>
+    </div>
+    <NDataTable
+      :columns="columns"
+      :data="comparisons"
+      :bordered="false"
+      :scroll-x="1100"
+      :max-height="maxHeight"
+      :flex-height="flexHeight"
+      size="small"
+      striped
+      :row-key="rowKey"
+      v-model:checked-row-keys="checkedRowKeys"
+    />
+  </div>
 </template>
+
+<style scoped>
+.table-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+.selection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+</style>

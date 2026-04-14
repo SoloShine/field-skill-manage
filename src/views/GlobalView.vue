@@ -116,6 +116,30 @@ async function handleBatchUpdate() {
   }
 }
 
+async function handleBatchInstall(names: string[]) {
+  let ok = 0
+  for (const name of names) {
+    try {
+      await skillStore.installSkill(name, 'global')
+      ok++
+    } catch { /* skip failed */ }
+  }
+  await skillStore.loadGlobalSkills()
+  message.success(t('global.syncComplete'))
+}
+
+async function handleBatchUninstall(names: string[]) {
+  let ok = 0
+  for (const name of names) {
+    try {
+      await skillStore.uninstallSkill(name, 'global')
+      ok++
+    } catch { /* skip failed */ }
+  }
+  await skillStore.loadGlobalSkills()
+  message.success(t('global.syncComplete'))
+}
+
 function handlePreview(name: string, _repoId?: string) {
   previewSkill.value = name
 }
@@ -189,8 +213,11 @@ onUnmounted(() => {
         @update="handleUpdate"
         @uninstall="handleUninstall"
         @preview="handlePreview"
+        @batch-install="handleBatchInstall"
+        @batch-update="handleBatchUpdate"
+        @batch-uninstall="handleBatchUninstall"
       />
-      <EmptyState v-else :title="t('global.emptyTitle')" :description="t('global.emptyDesc')" />
+      <EmptyState v-else :title="t('global.emptyTitle')" :description="t('global.emptyDesc')" :action-label="t('global.emptyAction')" @action="handleSync" />
     </NSpin>
 
     <SkillPreviewModal

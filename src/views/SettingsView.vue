@@ -16,6 +16,8 @@ import {
   NCollapseItem,
   NRadioGroup,
   NRadioButton,
+  NTabs,
+  NTabPane,
   useMessage,
 } from 'naive-ui'
 import { useConfigStore } from '@/stores/config'
@@ -239,6 +241,9 @@ onMounted(async () => {
     </div>
     <div class="settings-scroll">
 
+    <NTabs type="line" animated>
+      <NTabPane name="general" :tab="t('settings.tabGeneral')">
+
     <NCard :title="t('settings.about')" class="settings-card">
       <div class="about-intro">
         <NText class="about-desc">{{ t('settings.projectDesc') }}</NText>
@@ -326,6 +331,10 @@ onMounted(async () => {
       </NForm>
     </NCard>
 
+      </NTabPane>
+
+      <NTabPane name="repository" :tab="t('settings.tabRepository')">
+
     <NCard :title="t('settings.remoteRepo')" class="settings-card">
       <!-- Existing repos -->
       <div v-if="form.repos.length > 0" class="repo-list">
@@ -381,6 +390,10 @@ onMounted(async () => {
         <NSwitch v-model:value="form.auto_sync" />
       </NFormItem>
     </NCard>
+
+      </NTabPane>
+
+      <NTabPane name="agents" :tab="t('settings.tabAgents')">
 
     <NCard :title="t('settings.builtinAgents')" class="settings-card">
       <template #header-extra>
@@ -449,6 +462,10 @@ onMounted(async () => {
         </NFormItem>
       </NForm>
     </NCard>
+
+      </NTabPane>
+    </NTabs>
+
     </div>
 
     <div class="settings-footer">
@@ -480,6 +497,12 @@ onMounted(async () => {
   min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
+}
+.settings-scroll :deep(.n-tabs-nav) {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-bg-primary);
 }
 .settings-footer {
   flex-shrink: 0;
