@@ -1,5 +1,7 @@
 # SPM Manager
 
+**[English](README.en.md)** | 简体中文
+
 Skill Package Manager 桌面管理工具 — 基于 Tauri 2 + Vue 3 + Rust 构建的跨平台应用。
 
 用于管理 AI Agent 的 Skill 包，支持全局和项目级别的安装、更新、差异对比和卸载。
