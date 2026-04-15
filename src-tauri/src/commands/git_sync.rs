@@ -13,27 +13,40 @@ pub struct SyncResult {
 }
 
 #[tauri::command]
-pub fn sync_remote_repo(state: State<'_, AppState>) -> Result<SyncResult, String> {
-    let config = state.config.lock().map_err(|e| e.to_string())?;
-    let repos: Vec<_> = config.repos.iter().filter(|r| r.enabled).cloned().collect();
-    drop(config);
+pub async fn sync_remote_repo(state: State<'_, AppState>) -> Result<SyncResult, String> {
+    let repos: Vec<_> = {
+        let config = state.config.lock().map_err(|e| e.to_string())?;
+        config.repos.iter().filter(|r| r.enabled).cloned().collect()
+    };
 
     if repos.is_empty() {
         return Err("No enabled repositories to sync".to_string());
     }
 
+    // Sync repos in parallel using tokio blocking tasks
+    let handles: Vec<_> = repos
+        .into_iter()
+        .map(|repo| {
+            tokio::task::spawn_blocking(move || {
+                let result = git_service::sync_repo(&repo.url, &repo.cache_path);
+                (repo.name, result)
+            })
+        })
+        .collect();
+
     let mut errors: Vec<String> = Vec::new();
     let mut success_count = 0usize;
-    for repo in &repos {
-        if let Err(e) = git_service::sync_repo(&repo.url, &repo.cache_path) {
-            eprintln!("Warning: Failed to sync repo '{}': {}", repo.name, e);
-            errors.push(format!("{}: {}", repo.name, e));
-        } else {
-            success_count += 1;
+    for handle in handles {
+        let (name, result) = handle.await.map_err(|e| e.to_string())?;
+        match result {
+            Ok(()) => success_count += 1,
+            Err(e) => {
+                eprintln!("Warning: Failed to sync repo '{}': {}", name, e);
+                errors.push(format!("{}: {}", name, e));
+            }
         }
     }
 
-    // If ALL repos failed, return error
     if success_count == 0 {
         return Err(format!("All repos failed to sync: {}", errors.join("; ")));
     }
