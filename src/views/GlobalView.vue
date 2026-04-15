@@ -218,28 +218,30 @@ onUnmounted(() => {
           {{ t('global.globalPath', { agent: configStore.getActiveDisplayName(), path: configStore.getGlobalPath() || '-' }) }}
         </p>
       </div>
-      <div class="stats-bar">
-        <button class="stat-chip" :class="{ active: !statusFilter || statusFilter === 'all' }" @click="statusFilter = !statusFilter || statusFilter === 'all' ? null : 'all'">{{ t('stats.total', { count: stats.total }) }}</button>
-        <button class="stat-chip stat-same" :class="{ active: statusFilter === 'Same' }" @click="statusFilter = statusFilter === 'Same' ? null : 'Same'">{{ t('stats.same', { count: stats.same }) }}</button>
-        <button class="stat-chip stat-outdated" :class="{ active: statusFilter === 'Outdated' }" @click="statusFilter = statusFilter === 'Outdated' ? null : 'Outdated'">{{ t('stats.outdated', { count: stats.outdated }) }}</button>
-        <button class="stat-chip stat-local" :class="{ active: statusFilter === 'LocalOnly' }" @click="statusFilter = statusFilter === 'LocalOnly' ? null : 'LocalOnly'">{{ t('stats.localOnly', { count: stats.localOnly }) }}</button>
-        <button class="stat-chip stat-remote" :class="{ active: statusFilter === 'RemoteOnly' }" @click="statusFilter = statusFilter === 'RemoteOnly' ? null : 'RemoteOnly'">{{ t('stats.remoteOnly', { count: stats.remoteOnly }) }}</button>
-      </div>
-      <div class="toolbar">
-        <NSpace>
-          <NButton type="primary" :loading="skillStore.syncing" @click="handleSync">
-            {{ t('common.syncRemote') }}
-          </NButton>
-          <NButton :disabled="stats.outdated === 0" @click="handleBatchUpdate">
-            {{ t('global.updateAll', { count: stats.outdated }) }}
-          </NButton>
-          <NButton @click="showHistory = true">{{ t('history.title') }}</NButton>
-        </NSpace>
-        <NSpace class="filters">
-          <NInput ref="searchInputRef" v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
-          <NSelect v-model:value="statusFilter" :options="statusOptions" :placeholder="t('status.status')" clearable style="width: 110px" />
-        </NSpace>
-      </div>
+      <template v-if="skillStore.globalComparisons.length > 0">
+        <div class="stats-bar">
+          <button class="stat-chip" :class="{ active: !statusFilter || statusFilter === 'all' }" @click="statusFilter = !statusFilter || statusFilter === 'all' ? null : 'all'">{{ t('stats.total', { count: stats.total }) }}</button>
+          <button class="stat-chip stat-same" :class="{ active: statusFilter === 'Same' }" @click="statusFilter = statusFilter === 'Same' ? null : 'Same'">{{ t('stats.same', { count: stats.same }) }}</button>
+          <button class="stat-chip stat-outdated" :class="{ active: statusFilter === 'Outdated' }" @click="statusFilter = statusFilter === 'Outdated' ? null : 'Outdated'">{{ t('stats.outdated', { count: stats.outdated }) }}</button>
+          <button class="stat-chip stat-local" :class="{ active: statusFilter === 'LocalOnly' }" @click="statusFilter = statusFilter === 'LocalOnly' ? null : 'LocalOnly'">{{ t('stats.localOnly', { count: stats.localOnly }) }}</button>
+          <button class="stat-chip stat-remote" :class="{ active: statusFilter === 'RemoteOnly' }" @click="statusFilter = statusFilter === 'RemoteOnly' ? null : 'RemoteOnly'">{{ t('stats.remoteOnly', { count: stats.remoteOnly }) }}</button>
+        </div>
+        <div class="toolbar">
+          <NSpace>
+            <NButton type="primary" :loading="skillStore.syncing" @click="handleSync">
+              {{ t('common.syncRemote') }}
+            </NButton>
+            <NButton :disabled="stats.outdated === 0" @click="handleBatchUpdate">
+              {{ t('global.updateAll', { count: stats.outdated }) }}
+            </NButton>
+            <NButton @click="showHistory = true">{{ t('history.title') }}</NButton>
+          </NSpace>
+          <NSpace class="filters">
+            <NInput ref="searchInputRef" v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
+            <NSelect v-model:value="statusFilter" :options="statusOptions" :placeholder="t('status.status')" clearable style="width: 110px" />
+          </NSpace>
+        </div>
+      </template>
     </div>
 
     <div v-if="!firstLoaded && skillStore.loading" class="skeleton-wrapper">

@@ -28,6 +28,7 @@ import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-shell'
 import { save, open as openDialog } from '@tauri-apps/plugin-dialog'
 import { invoke } from '@tauri-apps/api/core'
+import { marked } from 'marked'
 
 const { t } = useI18n()
 const configStore = useConfigStore()
@@ -221,7 +222,9 @@ async function openReleasePage() {
 }
 
 const renderedNotes = computed(() => {
-  return updateStore.updateInfo?.release_notes || ''
+  const md = updateStore.updateInfo?.release_notes
+  if (!md) return ''
+  return marked.parse(md, { async: false }) as string
 })
 
 onMounted(async () => {
@@ -269,28 +272,30 @@ onMounted(async () => {
           </NSpace>
         </NFormItem>
         <NFormItem v-if="updateStore.updateInfo && !updateStore.updateInfo.error" :label="t('settings.latestVersion')">
-          <NSpace align="center">
-            <NText>v{{ updateStore.updateInfo.latest_version }}</NText>
-            <NTag v-if="updateStore.updateInfo.has_update" type="warning" size="small" round>
-              {{ t('update.newVersionAvailable') }}
-            </NTag>
-            <NTag v-else type="success" size="small" round>
-              {{ t('update.alreadyLatest') }}
-            </NTag>
-            <NButton
-              v-if="updateStore.updateInfo.has_update"
-              type="primary"
-              size="small"
-              @click="openReleasePage"
-            >
-              {{ t('update.goToDownload') }}
-            </NButton>
+          <div class="version-info-block">
+            <NSpace align="center">
+              <NText>v{{ updateStore.updateInfo.latest_version }}</NText>
+              <NTag v-if="updateStore.updateInfo.has_update" type="warning" size="small" round>
+                {{ t('update.newVersionAvailable') }}
+              </NTag>
+              <NTag v-else type="success" size="small" round>
+                {{ t('update.alreadyLatest') }}
+              </NTag>
+              <NButton
+                v-if="updateStore.updateInfo.has_update"
+                type="primary"
+                size="small"
+                @click="openReleasePage"
+              >
+                {{ t('update.goToDownload') }}
+              </NButton>
+            </NSpace>
             <NCollapse v-if="updateStore.updateInfo.release_notes">
               <NCollapseItem :title="t('update.releaseNotes')" name="notes">
                 <div class="release-notes" v-html="renderedNotes" />
               </NCollapseItem>
             </NCollapse>
-          </NSpace>
+          </div>
         </NFormItem>
       </NForm>
     </NCard>
@@ -531,12 +536,48 @@ onMounted(async () => {
 .about-desc { font-size: 13px; line-height: 1.6; display: block; margin-bottom: 8px; }
 .about-repo { margin-top: 4px; }
 .about-repo-label { font-size: 13px; }
+.version-info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+.version-info-block :deep(.n-collapse) {
+  margin-top: 4px;
+}
 .release-notes {
   font-size: 13px;
   line-height: 1.6;
   max-height: 300px;
   overflow-y: auto;
   word-break: break-word;
+}
+.release-notes :deep(h1),
+.release-notes :deep(h2),
+.release-notes :deep(h3) {
+  margin: 12px 0 6px;
+  font-weight: 600;
+}
+.release-notes :deep(h1) { font-size: 16px; }
+.release-notes :deep(h2) { font-size: 15px; }
+.release-notes :deep(h3) { font-size: 14px; }
+.release-notes :deep(ul),
+.release-notes :deep(ol) {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+.release-notes :deep(li) {
+  margin: 2px 0;
+}
+.release-notes :deep(p) {
+  margin: 4px 0;
+}
+.release-notes :deep(a) {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+.release-notes :deep(a:hover) {
+  text-decoration: underline;
 }
 .release-notes :deep(pre) {
   background: var(--color-bg-code);
@@ -549,6 +590,38 @@ onMounted(async () => {
   padding: 2px 4px;
   border-radius: 3px;
   font-size: 12px;
+}
+.release-notes :deep(pre code) {
+  background: none;
+  padding: 0;
+}
+.release-notes :deep(blockquote) {
+  border-left: 3px solid var(--color-border);
+  padding-left: 12px;
+  margin: 6px 0;
+  color: var(--color-text-secondary);
+}
+.release-notes :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--color-border-light);
+  margin: 8px 0;
+}
+.release-notes :deep(strong) {
+  font-weight: 600;
+}
+.release-notes :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 6px 0;
+}
+.release-notes :deep(th),
+.release-notes :deep(td) {
+  border: 1px solid var(--color-border-light);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.release-notes :deep(img) {
+  max-width: 100%;
 }
 .accent-picker {
   display: flex;

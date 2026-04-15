@@ -26,6 +26,6 @@ const emit = defineEmits<{ action: [] }>()
   align-items: center;
 }
 .empty-action {
-  margin-top: -16px;
+  margin-top: 4px;
 }
 </style>

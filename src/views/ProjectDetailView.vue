@@ -207,18 +207,20 @@ onUnmounted(() => {
         </NBreadcrumb>
       </div>
       <p class="header-path">{{ projectStore.projectPath }}</p>
-      <div class="stats-bar">
-        <button class="stat-chip" :class="{ active: !statusFilter || statusFilter === 'all' }" @click="statusFilter = !statusFilter || statusFilter === 'all' ? null : 'all'">{{ t('stats.total', { count: stats.total }) }}</button>
-        <button class="stat-chip stat-same" :class="{ active: statusFilter === 'Same' }" @click="statusFilter = statusFilter === 'Same' ? null : 'Same'">{{ t('stats.same', { count: stats.same }) }}</button>
-        <button class="stat-chip stat-outdated" :class="{ active: statusFilter === 'Outdated' }" @click="statusFilter = statusFilter === 'Outdated' ? null : 'Outdated'">{{ t('stats.outdated', { count: stats.outdated }) }}</button>
-        <button class="stat-chip stat-local" :class="{ active: statusFilter === 'LocalOnly' }" @click="statusFilter = statusFilter === 'LocalOnly' ? null : 'LocalOnly'">{{ t('stats.localOnly', { count: stats.localOnly }) }}</button>
-        <button class="stat-chip stat-remote" :class="{ active: statusFilter === 'RemoteOnly' }" @click="statusFilter = statusFilter === 'RemoteOnly' ? null : 'RemoteOnly'">{{ t('stats.remoteOnly', { count: stats.remoteOnly }) }}</button>
-      </div>
-      <div class="toolbar">
-        <NButton :loading="skillStore.syncing" @click="handleSync">{{ t('common.syncRemote') }}</NButton>
-        <NButton @click="showHistory = true">{{ t('history.title') }}</NButton>
-        <NInput ref="searchInputRef" v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
-      </div>
+      <template v-if="skillStore.projectComparisons.length > 0">
+        <div class="stats-bar">
+          <button class="stat-chip" :class="{ active: !statusFilter || statusFilter === 'all' }" @click="statusFilter = !statusFilter || statusFilter === 'all' ? null : 'all'">{{ t('stats.total', { count: stats.total }) }}</button>
+          <button class="stat-chip stat-same" :class="{ active: statusFilter === 'Same' }" @click="statusFilter = statusFilter === 'Same' ? null : 'Same'">{{ t('stats.same', { count: stats.same }) }}</button>
+          <button class="stat-chip stat-outdated" :class="{ active: statusFilter === 'Outdated' }" @click="statusFilter = statusFilter === 'Outdated' ? null : 'Outdated'">{{ t('stats.outdated', { count: stats.outdated }) }}</button>
+          <button class="stat-chip stat-local" :class="{ active: statusFilter === 'LocalOnly' }" @click="statusFilter = statusFilter === 'LocalOnly' ? null : 'LocalOnly'">{{ t('stats.localOnly', { count: stats.localOnly }) }}</button>
+          <button class="stat-chip stat-remote" :class="{ active: statusFilter === 'RemoteOnly' }" @click="statusFilter = statusFilter === 'RemoteOnly' ? null : 'RemoteOnly'">{{ t('stats.remoteOnly', { count: stats.remoteOnly }) }}</button>
+        </div>
+        <div class="toolbar">
+          <NButton :loading="skillStore.syncing" @click="handleSync">{{ t('common.syncRemote') }}</NButton>
+          <NButton @click="showHistory = true">{{ t('history.title') }}</NButton>
+          <NInput ref="searchInputRef" v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
+        </div>
+      </template>
     </div>
 
     <div v-if="!firstLoaded && skillStore.loading" class="skeleton-wrapper">
