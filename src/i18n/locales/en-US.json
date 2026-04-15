@@ -2,6 +2,7 @@
   "nav": {
     "global": "Global",
     "project": "Projects",
+    "guide": "Guide",
     "settings": "Settings"
   },
   "sidebar": {
@@ -207,5 +208,98 @@
     "checkFailed": "Check failed: {error}",
     "checking": "Checking for updates...",
     "noReleases": "No published releases found"
+  },
+  "guide": {
+    "title": "Skill Development Guide",
+    "subtitle": "Learn how to create spm-compliant skill packages",
+    "structure": {
+      "title": "Skill Directory Structure",
+      "desc": "A skill is a directory containing SKILL.md as the core entry point that defines metadata and AI instructions. The directory can also include templates, scripts, references, and other supporting files — all of which are deployed together during installation.",
+      "tree": "my-skill/\n├── SKILL.md          # Core: metadata + AI instructions (required)\n├── templates/        # Template files (optional)\n│   └── report.md\n├── scripts/          # Helper scripts (optional)\n│   └── setup.sh\n├── references/       # Reference materials (optional)\n│   └── api-spec.json\n└── examples/         # Example files (optional)\n    └── sample-output.md"
+    },
+    "frontmatter": {
+      "title": "Frontmatter Fields",
+      "desc": "Every SKILL.md begins with YAML frontmatter declaring metadata, trigger conditions, and permission requirements.",
+      "required": "Required Fields",
+      "optional": "Optional Fields",
+      "field": "Field",
+      "format": "Format",
+      "description": "Description",
+      "rows": {
+        "name": "Skill name — lowercase alphanumeric + hyphens, must start with letter or digit",
+        "version": "Semantic version (major.minor.patch)",
+        "author": "Author name",
+        "license": "SPDX license identifier (MIT, Apache-2.0, etc.)",
+        "description": "Human-readable short description",
+        "language": "Language code, default: en",
+        "repository": "Source repository URL"
+      }
+    },
+    "trigger": {
+      "title": "Trigger Configuration (trigger)",
+      "desc": "Controls when the AI model selects this skill. Required for publishable skills.",
+      "triggerDesc": "Natural language description read by the AI model to decide when to use this skill",
+      "tags": "Keyword tag array for skill discovery — minimum 1 tag",
+      "filePatterns": "Glob patterns for file-based matching, optional",
+      "priority": "Priority (0–100, default 50). 0–19: demos; 20–39: general community; 40–59: specialized (default); 60–79: domain-specific; 80–100: core/system"
+    },
+    "security": {
+      "title": "Security Permissions (security.permissions)",
+      "desc": "Declare runtime permissions. List only granted permissions as a flat string array.",
+      "permissions": {
+        "fileRead": "Read files",
+        "fileWrite": "Create/modify files",
+        "fileDelete": "Delete files",
+        "bashExecute": "Run shell commands",
+        "networkNone": "No network access",
+        "networkAllowlist": "Restricted network access",
+        "toolWebSearch": "Web search capability",
+        "toolAll": "All tools"
+      }
+    },
+    "dependencies": {
+      "title": "Dependencies & Compatibility",
+      "desc": "Declare skill dependencies and runtime compatibility requirements.",
+      "deps": "Depend on other skills using author/name: semver-range format",
+      "compatibility": "Compatibility: min_context_tokens, requires (capabilities), models (restrict to models, empty = all)"
+    },
+    "body": {
+      "title": "Body Writing Guide",
+      "desc": "The SKILL.md body uses XML tags following Anthropic's prompt engineering best practices. Tags create semantic boundaries for reliable model parsing.",
+      "tags": {
+        "context": "Define expertise scope, skill purpose, and why it exists",
+        "instructions": "Core step-by-step implementation instructions",
+        "examples": "Input/output demonstration cases (2–3 examples significantly improve output quality)",
+        "guidelines": "Constraints with motivation for better generalization",
+        "verification": "Post-task self-check checklist",
+        "custom": "Custom tags — use semantic names like <stack>, <patterns>, <avoid>"
+      },
+      "tag": "Tag",
+      "purpose": "Purpose"
+    },
+    "tips": {
+      "title": "Writing Tips",
+      "desc": "Key principles for writing high-quality skills.",
+      "specific": "Be specific — name exact libraries, APIs, file formats. The model follows literally.",
+      "positive": "Positive framing — \"Always validate inputs\" works better than \"Don't skip validation\".",
+      "motivation": "Include motivation — \"Use pooling (keeps resources predictable)\" helps the model generalize.",
+      "examples": "Add examples — cover a typical case and an edge case.",
+      "concise": "Keep concise — every token counts against the context budget."
+    },
+    "example": {
+      "title": "Complete Example",
+      "desc": "A complete SKILL.md template with all key sections.",
+      "code": "---\nname: report-generator\nversion: 1.0.0\nauthor: your-name\nlicense: MIT\ndescription: \"Generate structured reports from data files\"\nlanguage: en\n\ntrigger:\n  description: \"Use when creating reports from CSV, JSON, or database data\"\n  tags: [report, data, analysis, csv]\n  file_patterns: [\"*.csv\", \"*.json\"]\n  priority: 50\n\nsecurity:\n  permissions: [file:read, file:write]\n\ncompatibility:\n  min_context_tokens: 3000\n  requires: [file_system]\n  models: []\n---\n\n<context>\nExpert in data analysis and report generation. This skill solves\nthe challenge of producing professional reports from various data\nsources, providing data cleaning, statistical analysis, and\nvisualization recommendations.\n</context>\n\n<instructions>\n1. Read and parse user-provided data files (CSV, JSON)\n2. Perform data cleaning: handle missing values, outliers, format normalization\n3. Run statistical analysis: distributions, trends, correlations\n4. Generate a structured report with summary, chart suggestions, and conclusions\n</instructions>\n\n<examples>\n<example>\n<input>User uploads a sales CSV dataset</input>\n<output>Generates a report with monthly trends, top 10 products, and regional breakdown</output>\n</example>\n<example>\n<input>User provides JSON-formatted API response data</input>\n<output>Extracts key fields and generates an API health analysis report</output>\n</example>\n</examples>\n\n<guidelines>\n- Always validate data format and completeness first (avoids wasting time on dirty data)\n- Attach confidence levels and sample sizes to statistics (helps user assess reliability)\n- Note recommended chart types with reasoning for each visualization\n</guidelines>\n\n<verification>\n- [ ] Data successfully parsed with no format errors\n- [ ] Missing values and outliers properly handled\n- [ ] Report contains summary, analysis, and conclusion sections\n- [ ] All values include units and context\n</verification>"
+    },
+    "validate": {
+      "title": "Validation & Installation",
+      "desc": "After development, follow these steps to validate and use your skill in SPM Manager.",
+      "validateCmd": "1. Check SKILL.md format",
+      "validateDesc": "Ensure frontmatter contains all required fields (name, version, author, license, description), name matches ^[a-z0-9][a-z0-9-]*$ format, and version is valid semver.",
+      "linkCmd": "2. Push to Git repository",
+      "linkDesc": "Commit the skill directory to a configured remote Git repository. Skills can be placed at the repo root or under a skills/ subdirectory.",
+      "publishCmd": "3. Install via SPM Manager",
+      "publishDesc": "Click \"Sync Remote\" in SPM Manager to fetch the latest repository, then install the skill from the Global or Project page. Installation copies the entire skill directory to the Agent's skill path (e.g. .claude/skills/)."
+    }
   }
 }

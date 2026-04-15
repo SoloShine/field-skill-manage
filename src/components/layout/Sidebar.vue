@@ -10,7 +10,7 @@ import { SUPPORTED_LOCALES } from '@/i18n'
 import { useTheme } from '@/composables/useTheme'
 import { computed, h, onMounted } from 'vue'
 import { open } from '@tauri-apps/plugin-shell'
-import { MoonOutline, SunnyOutline, GlobeOutline, FolderOutline, SettingsOutline } from '@vicons/ionicons5'
+import { MoonOutline, SunnyOutline, GlobeOutline, FolderOutline, BookOutline, SettingsOutline } from '@vicons/ionicons5'
 
 const router = useRouter()
 const route = useRoute()
@@ -24,6 +24,7 @@ const message = useMessage()
 const menuOptions = computed<MenuOption[]>(() => [
   { label: () => t('nav.global'), key: 'global', icon: () => h(NIcon, { size: 18 }, () => h(GlobeOutline)) },
   { label: () => t('nav.project'), key: 'project', icon: () => h(NIcon, { size: 18 }, () => h(FolderOutline)) },
+  { label: () => t('nav.guide'), key: 'guide', icon: () => h(NIcon, { size: 18 }, () => h(BookOutline)) },
   { label: () => t('nav.settings'), key: 'settings', icon: () => h(NIcon, { size: 18 }, () => h(SettingsOutline)) },
 ])
 

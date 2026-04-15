@@ -2,6 +2,7 @@
   "nav": {
     "global": "全局管理",
     "project": "项目管理",
+    "guide": "开发指南",
     "settings": "设置"
   },
   "sidebar": {
@@ -207,5 +208,98 @@
     "checkFailed": "检查失败: {error}",
     "checking": "正在检查更新...",
     "noReleases": "暂未找到已发布的版本"
+  },
+  "guide": {
+    "title": "Skill 开发指南",
+    "subtitle": "了解如何创建符合 spm 规范的 Skill 包",
+    "structure": {
+      "title": "Skill 目录结构",
+      "desc": "一个 Skill 是一个包含 SKILL.md 的目录。SKILL.md 是核心入口，定义元数据和 AI 指令。目录中还可以包含模板、脚本、参考资料等辅助文件，它们会在安装时一并部署。",
+      "tree": "my-skill/\n├── SKILL.md          # 核心：元数据 + AI 指令（必需）\n├── templates/        # 模板文件（可选）\n│   └── report.md\n├── scripts/          # 辅助脚本（可选）\n│   └── setup.sh\n├── references/       # 参考资料（可选）\n│   └── api-spec.json\n└── examples/         # 示例文件（可选）\n    └── sample-output.md"
+    },
+    "frontmatter": {
+      "title": "Frontmatter 字段说明",
+      "desc": "SKILL.md 文件以 YAML frontmatter 开头，声明 Skill 的元数据、触发条件和权限需求。",
+      "required": "必填字段",
+      "optional": "可选字段",
+      "field": "字段",
+      "format": "格式",
+      "description": "说明",
+      "rows": {
+        "name": "Skill 名称，小写字母+数字+连字符，必须以字母或数字开头",
+        "version": "语义化版本号（major.minor.patch）",
+        "author": "作者名称",
+        "license": "SPDX 许可证标识（MIT、Apache-2.0 等）",
+        "description": "人类可读的简短描述",
+        "language": "语言代码，默认 en",
+        "repository": "源码仓库地址"
+      }
+    },
+    "trigger": {
+      "title": "触发器配置（trigger）",
+      "desc": "控制 AI 模型何时选择此 Skill。用于发布到仓库的 Skill 必须配置触发器。",
+      "triggerDesc": "自然语言描述，由 AI 模型读取，决定何时使用此 Skill",
+      "tags": "关键词标签数组，用于 Skill 发现，至少 1 个",
+      "filePatterns": "文件匹配的 glob 模式数组，可选",
+      "priority": "优先级（0-100，默认 50）。0-19: 示例；20-39: 社区通用；40-59: 专业领域（默认）；60-79: 严格领域；80-100: 核心/系统级"
+    },
+    "security": {
+      "title": "安全权限声明（security.permissions）",
+      "desc": "声明 Skill 运行时需要的权限。列表中只列出已授予的权限，使用字符串数组格式。",
+      "permissions": {
+        "fileRead": "读取文件",
+        "fileWrite": "创建/修改文件",
+        "fileDelete": "删除文件",
+        "bashExecute": "执行 Shell 命令",
+        "networkNone": "无网络访问",
+        "networkAllowlist": "受限网络访问",
+        "toolWebSearch": "Web 搜索能力",
+        "toolAll": "所有工具"
+      }
+    },
+    "dependencies": {
+      "title": "依赖与兼容性",
+      "desc": "声明 Skill 间的依赖关系和运行时兼容性要求。",
+      "deps": "依赖其他 Skill，使用 author/name: semver-range 格式",
+      "compatibility": "兼容性要求：min_context_tokens（最小上下文）、requires（必要能力）、models（限定模型，空数组=全部）"
+    },
+    "body": {
+      "title": "Body 编写规范",
+      "desc": "SKILL.md 正文使用 XML 标签组织内容，遵循 Anthropic 提示工程最佳实践。标签创建语义边界，模型解析更可靠。",
+      "tags": {
+        "context": "定义专业领域、Skill 目的和存在意义",
+        "instructions": "核心的分步实现指令",
+        "examples": "输入/输出演示用例（2-3 个示例显著提升输出质量）",
+        "guidelines": "约束与规范，附上动机说明",
+        "verification": "任务完成后的自检清单",
+        "custom": "自定义标签 — 使用语义化名称，如 <stack>、<patterns>、<avoid>"
+      },
+      "tag": "标签",
+      "purpose": "用途"
+    },
+    "tips": {
+      "title": "编写技巧",
+      "desc": "编写高质量 Skill 的关键原则。",
+      "specific": "具体化 — 写明具体的库、API、文件格式，模型会按字面执行",
+      "positive": "正面表述 — 「始终验证输入」比「不要跳过验证」更有效",
+      "motivation": "添加动机 — 「使用连接池（保持资源可预测）」帮助模型泛化",
+      "examples": "提供示例 — 覆盖典型场景和边界情况",
+      "concise": "保持简洁 — 每个 token 都计入上下文预算"
+    },
+    "example": {
+      "title": "完整示例",
+      "desc": "一个完整的 SKILL.md 文件模板，包含所有关键部分。",
+      "code": "---\nname: report-generator\nversion: 1.0.0\nauthor: your-name\nlicense: MIT\ndescription: \"从数据文件生成结构化报告\"\nlanguage: zh\n\ntrigger:\n  description: \"当需要从 CSV、JSON 或数据库数据创建报告时使用\"\n  tags: [report, data, analysis, csv]\n  file_patterns: [\"*.csv\", \"*.json\"]\n  priority: 50\n\nsecurity:\n  permissions: [file:read, file:write]\n\ncompatibility:\n  min_context_tokens: 3000\n  requires: [file_system]\n  models: []\n---\n\n<context>\n数据分析与报告生成专家。此 Skill 解决从各种数据源\n生成专业报告的需求，提供数据清洗、统计分析和\n可视化建议的能力。\n</context>\n\n<instructions>\n1. 读取并解析用户提供的数据文件（CSV、JSON）\n2. 执行数据清洗：处理缺失值、异常值、格式标准化\n3. 进行统计分析：分布、趋势、相关性\n4. 生成结构化报告，包含摘要、图表建议和结论\n</instructions>\n\n<examples>\n<example>\n<input>用户上传了一份销售 CSV 数据</input>\n<output>生成包含月度趋势、Top 10 产品和区域分布的报告</output>\n</example>\n<example>\n<input>用户提供了 JSON 格式的 API 响应数据</input>\n<output>提取关键字段，生成接口健康度分析报告</output>\n</example>\n</examples>\n\n<guidelines>\n- 始终先验证数据格式和完整性（避免处理脏数据浪费时间）\n- 统计结果附上置信度和样本量（帮助用户判断可靠性）\n- 图表建议标注适用的图表类型及原因\n</guidelines>\n\n<verification>\n- [ ] 数据已成功解析，无格式错误\n- [ ] 缺失值和异常值已妥善处理\n- [ ] 报告包含摘要、分析和结论三部分\n- [ ] 所有数值附带了单位和上下文\n</verification>"
+    },
+    "validate": {
+      "title": "验证与安装",
+      "desc": "开发完成后，通过以下步骤验证 Skill 并在 SPM Manager 中使用。",
+      "validateCmd": "1. 检查 SKILL.md 格式",
+      "validateDesc": "确保 frontmatter 包含所有必填字段（name、version、author、license、description），name 符合 ^[a-z0-9][a-z0-9-]*$ 格式，version 为合法 semver。",
+      "linkCmd": "2. 推送到 Git 仓库",
+      "linkDesc": "将 Skill 目录提交到配置的远端 Git 仓库中。目录可以放在仓库根目录或 skills/ 子目录下。",
+      "publishCmd": "3. 通过 SPM Manager 安装",
+      "publishDesc": "在 SPM Manager 中点击「同步远端」拉取最新仓库，然后在全局管理或项目页面中安装 Skill。安装会将整个 Skill 目录复制到 Agent 的 skill 路径下（如 .claude/skills/）。"
+    }
   }
 }
