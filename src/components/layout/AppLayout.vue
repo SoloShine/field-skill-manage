@@ -39,8 +39,8 @@ onMounted(async () => {
         <Sidebar />
         <main class="main-content">
           <router-view v-slot="{ Component }">
-            <transition name="fade-slide" mode="out-in">
-              <component :is="Component" />
+            <transition name="fade-slide">
+              <component :is="Component" :key="$route.fullPath" />
             </transition>
           </router-view>
         </main>
@@ -59,8 +59,10 @@ onMounted(async () => {
 .main-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 </style>
