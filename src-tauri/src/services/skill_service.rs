@@ -1,7 +1,8 @@
 use std::path::Path;
 
 use crate::models::skill::{
-    InstallStatus, SkillFrontmatter, SkillManifestEntry, SkillMeta, SkillsManifest,
+    FileDiff, FileDiffStatus, InstallStatus, SkillDiff, SkillFrontmatter, SkillManifestEntry,
+    SkillMeta, SkillsManifest,
 };
 
 /// Parse skills.json from a repository root
@@ -532,4 +533,100 @@ pub fn build_projects_overview(
     }
 
     Ok(summaries)
+}
+
+/// Build file-level diff between a local and remote skill directory
+pub fn build_skill_diff(
+    local_dir: &Path,
+    remote_dir: &Path,
+) -> Result<SkillDiff, String> {
+    let local_files = crate::services::hash_service::list_file_hashes(local_dir).unwrap_or_default();
+    let remote_files = crate::services::hash_service::list_file_hashes(remote_dir).unwrap_or_default();
+
+    let local_map: std::collections::HashMap<&str, &crate::models::skill::FileEntry> =
+        local_files.iter().map(|f| (f.path.as_str(), f)).collect();
+    let remote_map: std::collections::HashMap<&str, &crate::models::skill::FileEntry> =
+        remote_files.iter().map(|f| (f.path.as_str(), f)).collect();
+
+    // Collect all unique paths
+    let mut all_paths: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
+    for f in &local_files {
+        all_paths.insert(f.path.as_str());
+    }
+    for f in &remote_files {
+        all_paths.insert(f.path.as_str());
+    }
+
+    let mut files = Vec::new();
+    let mut added_count = 0u32;
+    let mut removed_count = 0u32;
+    let mut modified_count = 0u32;
+    let mut unchanged_count = 0u32;
+
+    for path in &all_paths {
+        let local_entry = local_map.get(path);
+        let remote_entry = remote_map.get(path);
+
+        let (status, local_hash, remote_hash, local_size, remote_size) =
+            match (local_entry, remote_entry) {
+                (Some(l), Some(r)) => {
+                    // Strip "sha256:" prefix for comparison
+                    let lh = l.hash.strip_prefix("sha256:").unwrap_or(&l.hash);
+                    let rh = r.hash.strip_prefix("sha256:").unwrap_or(&r.hash);
+                    if lh == rh {
+                        (FileDiffStatus::Unchanged, Some(l.hash.clone()), Some(r.hash.clone()), Some(l.size), Some(r.size))
+                    } else {
+                        (FileDiffStatus::Modified, Some(l.hash.clone()), Some(r.hash.clone()), Some(l.size), Some(r.size))
+                    }
+                }
+                (None, Some(r)) => {
+                    (FileDiffStatus::Added, None, Some(r.hash.clone()), None, Some(r.size))
+                }
+                (Some(l), None) => {
+                    (FileDiffStatus::Removed, Some(l.hash.clone()), None, Some(l.size), None)
+                }
+                (None, None) => continue,
+            };
+
+        match status {
+            FileDiffStatus::Added => added_count += 1,
+            FileDiffStatus::Removed => removed_count += 1,
+            FileDiffStatus::Modified => modified_count += 1,
+            FileDiffStatus::Unchanged => unchanged_count += 1,
+        }
+
+        files.push(FileDiff {
+            path: path.to_string(),
+            local_hash,
+            remote_hash,
+            local_size,
+            remote_size,
+            status,
+        });
+    }
+
+    // Extract versions from frontmatter
+    let local_version = parse_skill_frontmatter(local_dir.to_string_lossy().as_ref())
+        .ok()
+        .map(|f| f.version);
+    let remote_version = parse_skill_frontmatter(remote_dir.to_string_lossy().as_ref())
+        .ok()
+        .map(|f| f.version);
+
+    let skill_name = local_dir
+        .file_name()
+        .or_else(|| remote_dir.file_name())
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    Ok(SkillDiff {
+        skill_name,
+        local_version,
+        remote_version,
+        files,
+        added_count,
+        removed_count,
+        modified_count,
+        unchanged_count,
+    })
 }

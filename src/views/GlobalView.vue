@@ -5,6 +5,8 @@ import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
 import SkillCompareTable from '@/components/common/SkillCompareTable.vue'
 import SkillPreviewModal from '@/components/common/SkillPreviewModal.vue'
+import SkillDiffViewer from '@/components/common/SkillDiffViewer.vue'
+import OperationHistoryPanel from '@/components/common/OperationHistoryPanel.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import type { SkillComparison } from '@/types'
 import { useI18n } from 'vue-i18n'
@@ -17,6 +19,8 @@ const message = useMessage()
 const searchText = ref('')
 const statusFilter = ref<string | null>(null)
 const previewSkill = ref<string | null>(null)
+const diffSkill = ref<string | null>(null)
+const showHistory = ref(false)
 const searchInputRef = ref<InstanceType<typeof NInput> | null>(null)
 const tableHeight = ref(400)
 const viewRef = ref<HTMLElement | null>(null)
@@ -165,6 +169,15 @@ function handlePreview(name: string, _repoId?: string) {
   previewSkill.value = name
 }
 
+async function handleDiff(name: string, target: string) {
+  try {
+    await skillStore.loadSkillDiff(name, target)
+    diffSkill.value = name
+  } catch (e: any) {
+    message.error(t('diff.loadFailed', { error: e }))
+  }
+}
+
 function updateTableHeight() {
   if (viewRef.value && headerRef.value) {
     const viewH = viewRef.value.clientHeight
@@ -220,6 +233,7 @@ onUnmounted(() => {
           <NButton :disabled="stats.outdated === 0" @click="handleBatchUpdate">
             {{ t('global.updateAll', { count: stats.outdated }) }}
           </NButton>
+          <NButton @click="showHistory = true">{{ t('history.title') }}</NButton>
         </NSpace>
         <NSpace class="filters">
           <NInput ref="searchInputRef" v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
@@ -243,6 +257,7 @@ onUnmounted(() => {
         @update="handleUpdate"
         @uninstall="handleUninstall"
         @preview="handlePreview"
+        @diff="handleDiff"
         @batch-install="handleBatchInstall"
         @batch-update="handleBatchUpdate"
         @batch-uninstall="handleBatchUninstall"
@@ -256,6 +271,18 @@ onUnmounted(() => {
       :skill-name="previewSkill"
       target="global"
       @close="previewSkill = null"
+    />
+
+    <SkillDiffViewer
+      v-if="diffSkill && skillStore.skillDiff"
+      :diff="skillStore.skillDiff"
+      target="global"
+      @close="diffSkill = null"
+    />
+
+    <OperationHistoryPanel
+      v-if="showHistory"
+      @close="showHistory = false"
     />
   </div>
 </template>

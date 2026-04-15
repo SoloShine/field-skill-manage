@@ -76,6 +76,41 @@ pub struct SkillFrontmatter {
     pub updated_at: Option<String>,
 }
 
+/// File-level diff status for comparing local vs remote skill
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum FileDiffStatus {
+    Unchanged,
+    Added,
+    Removed,
+    Modified,
+}
+
+/// Single file diff between local and remote versions
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FileDiff {
+    pub path: String,
+    pub local_hash: Option<String>,
+    pub remote_hash: Option<String>,
+    pub local_size: Option<u64>,
+    pub remote_size: Option<u64>,
+    pub status: FileDiffStatus,
+}
+
+/// Complete diff result for a skill
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillDiff {
+    pub skill_name: String,
+    pub local_version: Option<String>,
+    pub remote_version: Option<String>,
+    pub files: Vec<FileDiff>,
+    pub added_count: u32,
+    pub removed_count: u32,
+    pub modified_count: u32,
+    pub unchanged_count: u32,
+}
+
 /// Comparison status between local and remote
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ComparisonStatus {

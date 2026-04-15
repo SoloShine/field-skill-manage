@@ -1,8 +1,9 @@
 use tauri::State;
 
 use crate::commands::config::AppState;
+use crate::models::history::OperationType;
 use crate::models::skill::SkillComparison;
-use crate::services::skill_service;
+use crate::services::{history_service, skill_service};
 
 /// Get overview of skills for multiple projects
 #[tauri::command]
@@ -71,7 +72,24 @@ pub fn install_skill(
     for repo in target_repos {
         let entries = skill_service::load_skill_entries(&repo.cache_path);
         if let Some(entry) = entries.iter().find(|s| s.name == skill_name) {
-            return skill_service::install_skill_to_dir(&repo.cache_path, &entry.path, &target_dir);
+            let result = skill_service::install_skill_to_dir(&repo.cache_path, &entry.path, &target_dir);
+
+            // Record history
+            let version_after = skill_service::parse_skill_frontmatter(
+                &std::path::Path::new(&target_dir).join(&skill_name).to_string_lossy(),
+            ).ok().map(|f| f.version);
+
+            let _ = history_service::record_operation(
+                OperationType::Install,
+                &skill_name,
+                &target,
+                repo_id.as_deref(),
+                None,
+                version_after.as_deref(),
+                true,
+            );
+
+            return result;
         }
     }
 
@@ -85,7 +103,54 @@ pub fn update_skill(
     target: String,
     repo_id: Option<String>,
 ) -> Result<(), String> {
-    install_skill(state, skill_name, target, repo_id)
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+    let repos = config.repos.clone();
+    let global_path = config.active_global_path();
+    let target_dir = if target == "global" {
+        global_path
+    } else {
+        config.active_project_dir(&target)
+    };
+    drop(config);
+
+    // Get version before update
+    let skill_dir = std::path::Path::new(&target_dir).join(&skill_name);
+    let version_before = skill_service::parse_skill_frontmatter(
+        &skill_dir.to_string_lossy(),
+    ).ok().map(|f| f.version);
+
+    // Find the skill in the specified repo or search all repos
+    let target_repos: Vec<_> = if let Some(ref rid) = repo_id {
+        repos.iter().filter(|r| &r.id == rid).collect()
+    } else {
+        repos.iter().filter(|r| r.enabled).collect()
+    };
+
+    for repo in target_repos {
+        let entries = skill_service::load_skill_entries(&repo.cache_path);
+        if let Some(entry) = entries.iter().find(|s| s.name == skill_name) {
+            let result = skill_service::install_skill_to_dir(&repo.cache_path, &entry.path, &target_dir);
+
+            // Get version after update
+            let version_after = skill_service::parse_skill_frontmatter(
+                &skill_dir.to_string_lossy(),
+            ).ok().map(|f| f.version);
+
+            let _ = history_service::record_operation(
+                OperationType::Update,
+                &skill_name,
+                &target,
+                repo_id.as_deref(),
+                version_before.as_deref(),
+                version_after.as_deref(),
+                true,
+            );
+
+            return result;
+        }
+    }
+
+    Err(format!("Skill '{}' not found in any repository", skill_name))
 }
 
 #[tauri::command]
@@ -97,7 +162,7 @@ pub fn batch_update(
 ) -> Result<Vec<String>, String> {
     let mut results = Vec::new();
     for name in &skill_names {
-        match install_skill(state.clone(), name.clone(), target.clone(), repo_id.clone()) {
+        match update_skill(state.clone(), name.clone(), target.clone(), repo_id.clone()) {
             Ok(()) => results.push(format!("{}: OK", name)),
             Err(e) => results.push(format!("{}: FAILED - {}", name, e)),
         }
@@ -121,9 +186,26 @@ pub fn uninstall_skill(
     drop(config);
 
     let skill_path = std::path::Path::new(&target_dir).join(&skill_name);
+
+    // Get version before uninstall
+    let version_before = skill_service::parse_skill_frontmatter(
+        &skill_path.to_string_lossy(),
+    ).ok().map(|f| f.version);
+
     if skill_path.exists() {
         std::fs::remove_dir_all(&skill_path)
             .map_err(|e| format!("Failed to remove {}: {}", skill_path.display(), e))?;
+
+        let _ = history_service::record_operation(
+            OperationType::Uninstall,
+            &skill_name,
+            &target,
+            None,
+            version_before.as_deref(),
+            None,
+            true,
+        );
+
         Ok(())
     } else {
         Err(format!("Skill '{}' not found at {}", skill_name, skill_path.display()))

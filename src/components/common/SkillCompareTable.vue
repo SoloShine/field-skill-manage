@@ -30,6 +30,7 @@ const emit = defineEmits<{
   update: [name: string, target: string, repoId?: string]
   uninstall: [name: string, target: string]
   preview: [name: string, repoId?: string]
+  diff: [name: string, target: string]
   batchInstall: [names: string[], target: string]
   batchUpdate: [names: string[], target: string]
   batchUninstall: [names: string[], target: string]
@@ -138,6 +139,9 @@ function actionsCell(row: SkillComparison) {
   }
 
   if (row.status === 'Outdated') {
+    buttons.push(
+      h(NButton, { size: 'tiny', quaternary: true, disabled: isLoading, onClick: () => emit('diff', row.name, props.target) }, () => t('diff.diff'))
+    )
     buttons.push(
       h(NButton, { type: 'warning', size: 'tiny', loading: isLoading, onClick: () => emit('update', row.name, props.target, repoId) }, () => t('common.update'))
     )

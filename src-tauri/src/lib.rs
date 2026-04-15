@@ -2,7 +2,7 @@ mod commands;
 mod models;
 mod services;
 
-use commands::{config, git_sync, preview, skill, update, version};
+use commands::{config, git_sync, history, preview, skill, update, version};
 use commands::config::AppState;
 use std::sync::Mutex;
 
@@ -59,6 +59,12 @@ pub fn run() {
             version::calculate_skill_hash,
             version::compare_skill_versions,
             version::verify_skill_integrity,
+            version::get_skill_diff,
+            version::get_diff_file_content,
+            // History
+            history::get_operation_history,
+            history::rollback_operation,
+            history::clear_history,
             // Preview
             preview::get_skill_file_tree,
             preview::read_skill_file,

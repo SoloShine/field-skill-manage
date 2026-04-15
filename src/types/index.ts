@@ -85,3 +85,46 @@ export interface UpdateInfo {
   published_at: string | null
   error: string | null
 }
+
+// Diff Viewer types
+export type FileDiffStatus = 'Unchanged' | 'Added' | 'Removed' | 'Modified'
+
+export interface FileDiff {
+  path: string
+  localHash?: string
+  remoteHash?: string
+  localSize?: number
+  remoteSize?: number
+  status: FileDiffStatus
+}
+
+export interface SkillDiff {
+  skillName: string
+  localVersion?: string
+  remoteVersion?: string
+  files: FileDiff[]
+  addedCount: number
+  removedCount: number
+  modifiedCount: number
+  unchangedCount: number
+}
+
+export interface DiffFileContent {
+  localContent?: string
+  remoteContent?: string
+}
+
+// Operation History types
+export type OperationType = 'Install' | 'Update' | 'Uninstall'
+
+export interface OperationRecord {
+  id: string
+  operation: OperationType
+  skillName: string
+  target: string
+  timestamp: string
+  repoId?: string
+  versionBefore?: string
+  versionAfter?: string
+  rollbackAvailable: boolean
+}

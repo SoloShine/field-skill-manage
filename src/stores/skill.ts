@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import type { SkillComparison, ProjectSkillSummary, SyncResult } from '@/types'
+import type { SkillComparison, ProjectSkillSummary, SyncResult, SkillDiff, OperationRecord } from '@/types'
 
 export const useSkillStore = defineStore('skill', () => {
   const globalComparisons = ref<SkillComparison[]>([])
@@ -10,6 +10,7 @@ export const useSkillStore = defineStore('skill', () => {
   const syncing = ref(false)
   const loading = ref(false)
   const lastSyncResult = ref<SyncResult | null>(null)
+  const skillDiff = ref<SkillDiff | null>(null)
 
   async function syncRemote() {
     syncing.value = true
@@ -67,6 +68,22 @@ export const useSkillStore = defineStore('skill', () => {
     await invoke('uninstall_skill', { skillName: name, target })
   }
 
+  async function loadSkillDiff(name: string, target: string) {
+    skillDiff.value = await invoke<SkillDiff>('get_skill_diff', { skillName: name, target })
+  }
+
+  async function getOperationHistory(limit?: number): Promise<OperationRecord[]> {
+    return await invoke<OperationRecord[]>('get_operation_history', { limit: limit || null })
+  }
+
+  async function rollbackOperation(id: string) {
+    await invoke('rollback_operation', { operationId: id })
+  }
+
+  async function clearHistory() {
+    await invoke('clear_history')
+  }
+
   return {
     globalComparisons,
     projectComparisons,
@@ -74,6 +91,7 @@ export const useSkillStore = defineStore('skill', () => {
     syncing,
     loading,
     lastSyncResult,
+    skillDiff,
     syncRemote,
     loadGlobalSkills,
     loadProjectSkills,
@@ -82,5 +100,9 @@ export const useSkillStore = defineStore('skill', () => {
     updateSkill,
     batchUpdate,
     uninstallSkill,
+    loadSkillDiff,
+    getOperationHistory,
+    rollbackOperation,
+    clearHistory,
   }
 })
