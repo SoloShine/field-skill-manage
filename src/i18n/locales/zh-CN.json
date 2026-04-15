@@ -297,9 +297,16 @@
       "validateCmd": "1. 检查 SKILL.md 格式",
       "validateDesc": "确保 frontmatter 包含所有必填字段（name、version、author、license、description），name 符合 ^[a-z0-9][a-z0-9-]*$ 格式，version 为合法 semver。",
       "linkCmd": "2. 推送到 Git 仓库",
-      "linkDesc": "将 Skill 目录提交到配置的远端 Git 仓库中。目录可以放在仓库根目录或 skills/ 子目录下。",
+      "linkDesc": "将 Skill 目录提交到配置的远端 Git 仓库。SPM Manager 支持两种仓库结构：",
       "publishCmd": "3. 通过 SPM Manager 安装",
-      "publishDesc": "在 SPM Manager 中点击「同步远端」拉取最新仓库，然后在全局管理或项目页面中安装 Skill。安装会将整个 Skill 目录复制到 Agent 的 skill 路径下（如 .claude/skills/）。"
+      "publishDesc": "在 SPM Manager 中点击「同步远端」拉取最新仓库，然后在全局管理或项目页面中安装 Skill。安装会将整个 Skill 目录复制到 Agent 的 skill 路径下（如 .claude/skills/）。",
+      "repoStructure": "仓库结构",
+      "manifestFirst": "方式一：skills.json 清单（优先）",
+      "manifestDesc": "在仓库根目录放置 skills.json 文件，显式声明所有 Skill 的名称、路径和元数据。",
+      "manifestTree": "my-repo/\n├── skills.json       # 清单文件（优先级最高）\n├── skill-a/\n│   └── SKILL.md\n└── skill-b/\n    └── SKILL.md",
+      "scanFallback": "方式二：目录扫描（回退）",
+      "scanDesc": "没有 skills.json 时，SPM Manager 自动扫描含 SKILL.md 的子目录。扫描范围包括仓库根目录的直接子目录和 skills/ 子目录下的直接子目录。",
+      "scanTree": "my-repo/\n├── skill-a/           # 根目录下的 Skill\n│   └── SKILL.md\n└── skills/             # skills/ 子目录下的 Skill\n    ├── skill-b/\n    │   └── SKILL.md\n    └── skill-c/\n        └── SKILL.md"
     }
   }
 }

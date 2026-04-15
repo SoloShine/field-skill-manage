@@ -195,9 +195,16 @@ const tips = [
             </NAlert>
           </NCollapseItem>
           <NCollapseItem :title="t('guide.validate.linkCmd')" name="link">
-            <NAlert type="info" :bordered="false">
-              {{ t('guide.validate.linkDesc') }}
-            </NAlert>
+            <NP>{{ t('guide.validate.linkDesc') }}</NP>
+            <NH2 prefix="bar" style="margin: 12px 0 8px; font-size: 15px;">
+              {{ t('guide.validate.repoStructure') }}
+            </NH2>
+            <NP><strong>{{ t('guide.validate.manifestFirst') }}</strong></NP>
+            <NP>{{ t('guide.validate.manifestDesc') }}</NP>
+            <pre class="code-block"><code>{{ t('guide.validate.manifestTree') }}</code></pre>
+            <NP style="margin-top: 12px;"><strong>{{ t('guide.validate.scanFallback') }}</strong></NP>
+            <NP>{{ t('guide.validate.scanDesc') }}</NP>
+            <pre class="code-block"><code>{{ t('guide.validate.scanTree') }}</code></pre>
           </NCollapseItem>
           <NCollapseItem :title="t('guide.validate.publishCmd')" name="publish">
             <NAlert type="info" :bordered="false">

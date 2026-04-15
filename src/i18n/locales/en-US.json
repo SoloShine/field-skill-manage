@@ -297,9 +297,16 @@
       "validateCmd": "1. Check SKILL.md format",
       "validateDesc": "Ensure frontmatter contains all required fields (name, version, author, license, description), name matches ^[a-z0-9][a-z0-9-]*$ format, and version is valid semver.",
       "linkCmd": "2. Push to Git repository",
-      "linkDesc": "Commit the skill directory to a configured remote Git repository. Skills can be placed at the repo root or under a skills/ subdirectory.",
+      "linkDesc": "Commit the skill directory to a configured remote Git repository. SPM Manager supports two repository structures:",
       "publishCmd": "3. Install via SPM Manager",
-      "publishDesc": "Click \"Sync Remote\" in SPM Manager to fetch the latest repository, then install the skill from the Global or Project page. Installation copies the entire skill directory to the Agent's skill path (e.g. .claude/skills/)."
+      "publishDesc": "Click \"Sync Remote\" in SPM Manager to fetch the latest repository, then install the skill from the Global or Project page. Installation copies the entire skill directory to the Agent's skill path (e.g. .claude/skills/).",
+      "repoStructure": "Repository Structure",
+      "manifestFirst": "Option 1: skills.json manifest (preferred)",
+      "manifestDesc": "Place a skills.json file at the repository root to explicitly declare all skills with their names, paths, and metadata.",
+      "manifestTree": "my-repo/\n├── skills.json       # Manifest file (highest priority)\n├── skill-a/\n│   └── SKILL.md\n└── skill-b/\n    └── SKILL.md",
+      "scanFallback": "Option 2: Directory scanning (fallback)",
+      "scanDesc": "Without skills.json, SPM Manager auto-scans subdirectories containing SKILL.md. It scans both direct subdirectories at the repo root and direct subdirectories under skills/.",
+      "scanTree": "my-repo/\n├── skill-a/           # Skill at repo root\n│   └── SKILL.md\n└── skills/             # Skills under skills/ subdirectory\n    ├── skill-b/\n    │   └── SKILL.md\n    └── skill-c/\n        └── SKILL.md"
     }
   }
 }
