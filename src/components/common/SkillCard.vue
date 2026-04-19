@@ -3,6 +3,7 @@ import { NCard, NTag, NButton, NSpace, NText } from 'naive-ui'
 import type { SkillMeta } from '@/types'
 import VersionBadge from './VersionBadge.vue'
 import { useI18n } from 'vue-i18n'
+import { computed } from 'vue'
 
 const { t } = useI18n()
 
@@ -21,6 +22,16 @@ function truncateHash(hash?: string): string {
   if (!hash) return '-'
   return hash.length > 16 ? hash.slice(0, 16) + '...' : hash
 }
+
+const displayTags = computed(() => {
+  const allTags = [...props.skill.tags]
+  if (props.skill.trigger?.tags) {
+    for (const t of props.skill.trigger.tags) {
+      if (!allTags.includes(t)) allTags.push(t)
+    }
+  }
+  return allTags.slice(0, 6)
+})
 </script>
 
 <template>
@@ -31,13 +42,22 @@ function truncateHash(hash?: string): string {
         <NText depth="3" class="skill-version">v{{ skill.version || '?' }}</NText>
         <VersionBadge :status="skill.install_status" />
       </div>
+      </div>
+      <div v-if="skill.author || skill.language" class="skill-meta-line">
+        <NText v-if="skill.author" depth="3" style="font-size: 12px">
+          by {{ skill.author }}
+        </NText>
+        <NTag v-if="skill.language" size="tiny" round :bordered="false" type="info" style="margin-left: 6px">
+          {{ skill.language }}
+        </NTag>
+      </div>
       <div class="skill-desc">
         <NText depth="2" style="font-size: 13px">
           {{ skill.description.length > 80 ? skill.description.slice(0, 80) + '...' : skill.description }}
         </NText>
       </div>
       <div class="skill-tags">
-        <NTag v-for="tag in skill.tags.slice(0, 4)" :key="tag" size="tiny" round type="info">
+        <NTag v-for="tag in displayTags" :key="tag" size="tiny" round type="info">
           {{ tag }}
         </NTag>
       </div>
@@ -113,6 +133,12 @@ function truncateHash(hash?: string): string {
 
 .skill-desc {
   margin-top: 6px;
+}
+
+.skill-meta-line {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
 }
 
 .skill-tags {

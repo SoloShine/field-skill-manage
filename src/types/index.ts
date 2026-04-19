@@ -10,6 +10,23 @@ export interface FileEntry {
   mtime: string
 }
 
+export interface TriggerInfo {
+  description: string
+  tags: string[]
+  file_patterns: string[]
+  priority?: number
+}
+
+export interface SecurityInfo {
+  permissions: string[]
+}
+
+export interface CompatibilityInfo {
+  min_context_tokens?: number
+  requires: string[]
+  models: string[]
+}
+
 export type InstallStatus = 'installed' | 'outdated' | 'not_installed' | 'unknown'
 
 export interface SkillMeta {
@@ -24,6 +41,13 @@ export interface SkillMeta {
   files?: FileEntry[]
   install_status?: InstallStatus
   source_repo_id?: string
+  author?: string
+  language?: string
+  trigger?: TriggerInfo
+  security?: SecurityInfo
+  compatibility?: CompatibilityInfo
+  dependencies?: Record<string, string>
+  repository?: string
 }
 
 export interface AgentInfo {

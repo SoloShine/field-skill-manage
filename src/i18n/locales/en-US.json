@@ -169,7 +169,14 @@
     "description": "Description",
     "tags": "Tags",
     "license": "License",
-    "updatedAt": "Updated"
+    "updatedAt": "Updated",
+    "author": "Author",
+    "language": "Language",
+    "repository": "Repository",
+    "trigger": "Trigger",
+    "security": "Security",
+    "compatibility": "Compatibility",
+    "dependencies": "Dependencies"
   },
   "table": {
     "status": "Status",

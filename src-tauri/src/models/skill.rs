@@ -1,18 +1,71 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct TriggerInfo {
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub file_patterns: Vec<String>,
+    #[serde(default)]
+    pub priority: Option<u32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct SecurityInfo {
+    #[serde(default)]
+    pub permissions: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct CompatibilityInfo {
+    #[serde(default)]
+    pub min_context_tokens: Option<u32>,
+    #[serde(default)]
+    pub requires: Vec<String>,
+    #[serde(default)]
+    pub models: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SkillMeta {
+    // 通用元数据字段（来自 SKILL.md frontmatter 或 skills.json）
     pub name: String,
     pub version: String,
     pub description: String,
+    #[serde(default)]
     pub tags: Vec<String>,
-    pub path: String,
+    #[serde(default)]
+    pub author: Option<String>,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default)]
     pub license: Option<String>,
+    #[serde(default)]
+    pub trigger: Option<TriggerInfo>,
+    #[serde(default)]
+    pub security: Option<SecurityInfo>,
+    #[serde(default)]
+    pub compatibility: Option<CompatibilityInfo>,
+    #[serde(default)]
+    pub dependencies: Option<HashMap<String, String>>,
+    #[serde(default)]
+    pub repository: Option<String>,
+    #[serde(default)]
     pub updated_at: Option<String>,
+
+    // 运行时填充字段（service 层填入）
+    #[serde(default)]
+    pub path: String,
+    #[serde(default)]
     pub checksum: Option<Checksum>,
+    #[serde(default)]
     pub files: Option<Vec<FileEntry>>,
+    #[serde(default)]
     pub install_status: Option<InstallStatus>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub source_repo_id: Option<String>,
 }
 
@@ -30,12 +83,13 @@ pub struct FileEntry {
     pub mtime: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub enum InstallStatus {
+    #[default]
+    Unknown,
     Installed,
     Outdated,
     NotInstalled,
-    Unknown,
 }
 
 /// Entry in skills.json manifest
@@ -45,11 +99,22 @@ pub struct SkillManifestEntry {
     pub path: String,
     pub version: String,
     pub description: String,
+    #[serde(default)]
     pub tags: Vec<String>,
+    #[serde(default)]
+    pub license: Option<String>,
     #[serde(default)]
     pub updated_at: Option<String>,
     #[serde(default)]
     pub checksum: Option<Checksum>,
+    #[serde(default)]
+    pub author: Option<String>,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default)]
+    pub trigger: Option<TriggerInfo>,
+    #[serde(default)]
+    pub security: Option<SecurityInfo>,
 }
 
 /// Root of skills.json
@@ -61,19 +126,6 @@ pub struct SkillsManifest {
     pub repository: Option<String>,
     pub license: Option<String>,
     pub skills: Vec<SkillManifestEntry>,
-}
-
-/// YAML frontmatter parsed from SKILL.md
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SkillFrontmatter {
-    pub name: String,
-    pub version: String,
-    pub description: String,
-    pub tags: Vec<String>,
-    #[serde(default)]
-    pub license: Option<String>,
-    #[serde(default)]
-    pub updated_at: Option<String>,
 }
 
 /// File-level diff status for comparing local vs remote skill
