@@ -46,6 +46,24 @@ interface FrontmatterData {
   tags: string[]
   license: string
   updated_at: string
+  author: string
+  language: string
+  repository: string
+  trigger: {
+    description: string
+    tags: string[]
+    file_patterns: string[]
+    priority?: number
+  } | null
+  security: {
+    permissions: string[]
+  } | null
+  compatibility: {
+    min_context_tokens?: number
+    requires: string[]
+    models: string[]
+  } | null
+  dependencies: Record<string, string> | null
   extra: Record<string, string>
 }
 
@@ -110,39 +128,98 @@ function parseFrontmatter(content: string): { fm: FrontmatterData | null; body: 
     tags: [],
     license: '',
     updated_at: '',
+    author: '',
+    language: '',
+    repository: '',
+    trigger: null,
+    security: null,
+    compatibility: null,
+    dependencies: null,
     extra: {},
   }
 
+  let currentSection = ''
+  let currentObj: Record<string, any> | null = null
+
   for (const line of yaml.split('\n')) {
     const trimmedLine = line.trim()
+
     if (!trimmedLine || trimmedLine.startsWith('#')) continue
+
+    // Detect nested section headers (indented objects)
+    if (!line.startsWith(' ') && !line.startsWith('\t')) {
+      currentSection = ''
+      currentObj = null
+    }
+
     const colon = trimmedLine.indexOf(':')
     if (colon === -1) continue
     const key = trimmedLine.slice(0, colon).trim()
     let val = trimmedLine.slice(colon + 1).trim()
 
-    if (val.startsWith('[') && val.endsWith(']')) {
-      val = val.slice(1, -1)
-      const items = val.split(',').map(s => s.trim()).filter(Boolean)
-      if (key === 'tags') {
-        fm.tags = items
-        continue
+    // Top-level keys
+    if (!line.startsWith(' ') && !line.startsWith('\t')) {
+      switch (key) {
+        case 'name': fm.name = val; break
+        case 'version': fm.version = val; break
+        case 'description': fm.description = val; break
+        case 'license': fm.license = val; break
+        case 'updated_at': fm.updated_at = val; break
+        case 'author': fm.author = val; break
+        case 'language': fm.language = val; break
+        case 'repository': fm.repository = val; break
+        case 'tags':
+          fm.tags = parseYamlArray(val)
+          break
+        case 'trigger':
+          currentSection = 'trigger'
+          currentObj = { description: '', tags: [], file_patterns: [] }
+          fm.trigger = currentObj as any
+          break
+        case 'security':
+          currentSection = 'security'
+          currentObj = { permissions: [] }
+          fm.security = currentObj as any
+          break
+        case 'compatibility':
+          currentSection = 'compatibility'
+          currentObj = { requires: [], models: [] }
+          fm.compatibility = currentObj as any
+          break
+        case 'dependencies':
+          currentSection = 'dependencies'
+          fm.dependencies = {}
+          break
+        default: fm.extra[key] = val
       }
-      fm.extra[key] = items.join(', ')
       continue
     }
 
-    switch (key) {
-      case 'name': fm.name = val; break
-      case 'version': fm.version = val; break
-      case 'description': fm.description = val; break
-      case 'license': fm.license = val; break
-      case 'updated_at': fm.updated_at = val; break
-      default: fm.extra[key] = val
+    // Nested keys (indented under trigger/security/compatibility/dependencies)
+    if (currentSection === 'trigger' && currentObj) {
+      if (key === 'description') currentObj.description = val
+      else if (key === 'tags') currentObj.tags = parseYamlArray(val)
+      else if (key === 'file_patterns') currentObj.file_patterns = parseYamlArray(val)
+      else if (key === 'priority') currentObj.priority = parseInt(val, 10) || undefined
+    } else if (currentSection === 'security' && currentObj) {
+      if (key === 'permissions') currentObj.permissions = parseYamlArray(val)
+    } else if (currentSection === 'compatibility' && currentObj) {
+      if (key === 'min_context_tokens') currentObj.min_context_tokens = parseInt(val, 10) || undefined
+      else if (key === 'requires') currentObj.requires = parseYamlArray(val)
+      else if (key === 'models') currentObj.models = parseYamlArray(val)
+    } else if (currentSection === 'dependencies' && fm.dependencies) {
+      fm.dependencies[key] = val
     }
   }
 
   return { fm, body }
+}
+
+function parseYamlArray(val: string): string[] {
+  if (val.startsWith('[') && val.endsWith(']')) {
+    return val.slice(1, -1).split(',').map(s => s.trim()).filter(Boolean)
+  }
+  return []
 }
 
 function stripFrontmatter(content: string): string {
@@ -299,6 +376,60 @@ onMounted(async () => {
                 </NDescriptionsItem>
                 <NDescriptionsItem v-if="frontmatter.updated_at" :label="t('preview.updatedAt')">
                   {{ frontmatter.updated_at }}
+                </NDescriptionsItem>
+                <NDescriptionsItem v-if="frontmatter.author" :label="t('preview.author')">
+                  {{ frontmatter.author }}
+                </NDescriptionsItem>
+                <NDescriptionsItem v-if="frontmatter.language" :label="t('preview.language')">
+                  {{ frontmatter.language }}
+                </NDescriptionsItem>
+                <NDescriptionsItem v-if="frontmatter.repository" :label="t('preview.repository')">
+                  {{ frontmatter.repository }}
+                </NDescriptionsItem>
+                <NDescriptionsItem v-if="frontmatter.trigger" :label="t('preview.trigger')">
+                  <div>
+                    <NText>{{ frontmatter.trigger.description }}</NText>
+                    <div v-if="frontmatter.trigger.tags.length > 0" style="margin-top: 4px">
+                      <NTag v-for="tag in frontmatter.trigger.tags" :key="'t-'+tag" size="small" round type="info" style="margin-right: 4px">
+                        {{ tag }}
+                      </NTag>
+                    </div>
+                    <div v-if="frontmatter.trigger.file_patterns.length > 0" style="margin-top: 4px; font-size: 12px">
+                      <NText depth="3">{{ frontmatter.trigger.file_patterns.join(', ') }}</NText>
+                    </div>
+                  </div>
+                </NDescriptionsItem>
+                <NDescriptionsItem v-if="frontmatter.security && frontmatter.security.permissions.length > 0" :label="t('preview.security')">
+                  <NTag
+                    v-for="perm in frontmatter.security.permissions"
+                    :key="perm"
+                    size="small"
+                    round
+                    :type="perm.includes('bash') || perm.includes('delete') ? 'warning' : 'default'"
+                    style="margin-right: 4px"
+                  >
+                    {{ perm }}
+                  </NTag>
+                </NDescriptionsItem>
+                <NDescriptionsItem v-if="frontmatter.compatibility" :label="t('preview.compatibility')">
+                  <div style="font-size: 13px">
+                    <div v-if="frontmatter.compatibility.min_context_tokens">
+                      min_context_tokens: {{ frontmatter.compatibility.min_context_tokens }}
+                    </div>
+                    <div v-if="frontmatter.compatibility.requires.length > 0">
+                      requires: {{ frontmatter.compatibility.requires.join(', ') }}
+                    </div>
+                    <div v-if="frontmatter.compatibility.models.length > 0">
+                      models: {{ frontmatter.compatibility.models.join(', ') }}
+                    </div>
+                  </div>
+                </NDescriptionsItem>
+                <NDescriptionsItem v-if="frontmatter.dependencies && Object.keys(frontmatter.dependencies).length > 0" :label="t('preview.dependencies')">
+                  <div style="font-size: 13px">
+                    <div v-for="(ver, dep) in frontmatter.dependencies" :key="dep">
+                      <NText code>{{ dep }}</NText> <NText depth="3">{{ ver }}</NText>
+                    </div>
+                  </div>
                 </NDescriptionsItem>
                 <NDescriptionsItem v-for="(val, key) in frontmatter.extra" :key="key" :label="key">
                   {{ val }}
