@@ -1,6 +1,6 @@
 {
   "productName": "SPM Manager",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "identifier": "com.spm.manager",
   "build": {
     "beforeDevCommand": "npm run dev",
