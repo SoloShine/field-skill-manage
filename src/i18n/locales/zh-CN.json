@@ -169,7 +169,14 @@
     "description": "说明",
     "tags": "标签",
     "license": "许可证",
-    "updatedAt": "更新时间"
+    "updatedAt": "更新时间",
+    "author": "作者",
+    "language": "语言",
+    "repository": "仓库",
+    "trigger": "触发条件",
+    "security": "安全权限",
+    "compatibility": "兼容性",
+    "dependencies": "依赖"
   },
   "table": {
     "status": "状态",
