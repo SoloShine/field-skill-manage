@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use crate::models::skill::{
-    FileDiff, FileDiffStatus, InstallStatus, SkillDiff, SkillFrontmatter, SkillManifestEntry,
-    SkillMeta, SkillsManifest,
+    FileDiff, FileDiffStatus, InstallStatus, SkillDiff, SkillManifestEntry, SkillMeta,
+    SkillsManifest,
 };
 
 /// Parse skills.json from a repository root
@@ -84,6 +84,11 @@ pub fn scan_skills_from_dirs(repo_path: &str) -> Vec<SkillManifestEntry> {
             tags: fm.as_ref().map(|f| f.tags.clone()).unwrap_or_default(),
             updated_at: fm.as_ref().and_then(|f| f.updated_at.clone()),
             checksum: None,
+            license: fm.as_ref().and_then(|f| f.license.clone()),
+            author: fm.as_ref().and_then(|f| f.author.clone()),
+            language: fm.as_ref().and_then(|f| f.language.clone()),
+            trigger: fm.as_ref().and_then(|f| f.trigger.clone()),
+            security: fm.as_ref().and_then(|f| f.security.clone()),
         });
     }
 
@@ -109,17 +114,12 @@ pub fn load_skill_entries(repo_path: &str) -> Vec<SkillManifestEntry> {
     entries
 }
 
-/// Parse SKILL.md YAML frontmatter from a skill directory
-pub fn parse_skill_frontmatter(skill_dir: &str) -> Result<SkillFrontmatter, String> {
+/// Parse SKILL.md YAML frontmatter from a skill directory using serde_yaml
+pub fn parse_skill_frontmatter(skill_dir: &str) -> Result<SkillMeta, String> {
     let skill_md_path = Path::new(skill_dir).join("SKILL.md");
     let content =
         std::fs::read_to_string(&skill_md_path).map_err(|e| format!("Read SKILL.md: {}", e))?;
 
-    parse_frontmatter_from_string(&content)
-}
-
-/// Extract YAML frontmatter from SKILL.md content
-fn parse_frontmatter_from_string(content: &str) -> Result<SkillFrontmatter, String> {
     let trimmed = content.trim_start();
     if !trimmed.starts_with("---") {
         return Err("No YAML frontmatter found".to_string());
@@ -131,52 +131,7 @@ fn parse_frontmatter_from_string(content: &str) -> Result<SkillFrontmatter, Stri
         .ok_or("Unterminated YAML frontmatter")?;
     let yaml_str = &rest[..end];
 
-    let fm = parse_simple_yaml_frontmatter(yaml_str)?;
-    Ok(fm)
-}
-
-/// Minimal YAML frontmatter parser
-fn parse_simple_yaml_frontmatter(yaml: &str) -> Result<SkillFrontmatter, String> {
-    let mut name = String::new();
-    let mut version = String::new();
-    let mut description = String::new();
-    let mut tags: Vec<String> = Vec::new();
-    let mut license: Option<String> = None;
-    let mut updated_at: Option<String> = None;
-
-    for line in yaml.lines() {
-        let line = line.trim();
-        if let Some(val) = line.strip_prefix("name:") {
-            name = val.trim().to_string();
-        } else if let Some(val) = line.strip_prefix("version:") {
-            version = val.trim().to_string();
-        } else if let Some(val) = line.strip_prefix("description:") {
-            description = val.trim().to_string();
-        } else if let Some(val) = line.strip_prefix("license:") {
-            license = Some(val.trim().to_string());
-        } else if let Some(val) = line.strip_prefix("updated_at:") {
-            updated_at = Some(val.trim().to_string());
-        } else if let Some(val) = line.strip_prefix("tags:") {
-            let tag_str = val.trim();
-            if tag_str.starts_with('[') && tag_str.ends_with(']') {
-                let inner = &tag_str[1..tag_str.len() - 1];
-                tags = inner
-                    .split(',')
-                    .map(|t| t.trim().to_string())
-                    .filter(|t| !t.is_empty())
-                    .collect();
-            }
-        }
-    }
-
-    Ok(SkillFrontmatter {
-        name,
-        version,
-        description,
-        tags,
-        license,
-        updated_at,
-    })
+    serde_yaml::from_str(yaml_str).map_err(|e| format!("Parse frontmatter: {}", e))
 }
 
 /// Build a SkillMeta by reading from a remote cache repository
@@ -190,39 +145,25 @@ pub fn build_remote_skill_meta(
     let fm = parse_skill_frontmatter(skill_dir.to_string_lossy().as_ref()).ok();
     let checksum = crate::services::hash_service::aggregate_sha256(&skill_dir).ok();
 
-    let (name, version, description, tags, license, updated_at) = if let Some(ref f) = fm {
-        (
-            f.name.clone(),
-            f.version.clone(),
-            f.description.clone(),
-            f.tags.clone(),
-            f.license.clone(),
-            f.updated_at.clone(),
-        )
-    } else {
-        (
-            entry.name.clone(),
-            entry.version.clone(),
-            entry.description.clone(),
-            entry.tags.clone(),
-            None,
-            entry.updated_at.clone(),
-        )
-    };
-
-    Ok(SkillMeta {
-        name,
-        version,
-        description,
-        tags,
+    let mut meta = fm.unwrap_or_else(|| SkillMeta {
+        name: entry.name.clone(),
+        version: entry.version.clone(),
+        description: entry.description.clone(),
+        tags: entry.tags.clone(),
         path: entry.path.clone(),
-        license,
-        updated_at: updated_at.or_else(|| entry.updated_at.clone()),
-        checksum: checksum.or_else(|| entry.checksum.clone()),
-        files: None,
-        install_status: Some(InstallStatus::NotInstalled),
-        source_repo_id: repo_id.map(|s| s.to_string()),
-    })
+        ..Default::default()
+    });
+
+    meta.path = entry.path.clone();
+    meta.checksum = checksum.or_else(|| entry.checksum.clone());
+    meta.install_status = Some(InstallStatus::NotInstalled);
+    meta.source_repo_id = repo_id.map(|s| s.to_string());
+
+    if meta.updated_at.is_none() {
+        meta.updated_at = entry.updated_at.clone();
+    }
+
+    Ok(meta)
 }
 
 /// Build SkillMeta for a locally installed skill
@@ -235,54 +176,36 @@ pub fn build_local_skill_meta(
     if !skill_dir.exists() {
         return Ok(SkillMeta {
             name: skill_name.to_string(),
-            version: String::new(),
-            description: String::new(),
-            tags: vec![],
             path: skill_name.to_string(),
-            license: None,
-            updated_at: None,
-            checksum: None,
-            files: None,
             install_status: Some(InstallStatus::NotInstalled),
-            source_repo_id: None,
+            ..Default::default()
         });
     }
 
     let fm = parse_skill_frontmatter(skill_dir.to_string_lossy().as_ref()).ok();
     let checksum = crate::services::hash_service::aggregate_sha256(&skill_dir).ok();
 
-    let name = fm.as_ref().map(|f| f.name.clone()).unwrap_or(skill_name.to_string());
-    let version = fm.as_ref().map(|f| f.version.clone()).unwrap_or_default();
-    let description = fm.as_ref().map(|f| f.description.clone()).unwrap_or_default();
-    let tags = fm.as_ref().map(|f| f.tags.clone()).unwrap_or_default();
-    let license = fm.as_ref().and_then(|f| f.license.clone());
-    let updated_at = fm.as_ref().and_then(|f| f.updated_at.clone());
+    let mut meta = fm.unwrap_or_else(|| SkillMeta {
+        name: skill_name.to_string(),
+        path: skill_name.to_string(),
+        ..Default::default()
+    });
 
-    // Use mtime as fallback for updated_at
-    let updated_at = updated_at.or_else(|| {
-        skill_dir
+    meta.path = skill_name.to_string();
+    meta.checksum = checksum;
+
+    if meta.updated_at.is_none() {
+        meta.updated_at = skill_dir
             .metadata()
             .ok()
             .and_then(|m| m.modified().ok())
             .map(|t| {
                 let dt: chrono::DateTime<chrono::Local> = t.into();
                 dt.to_rfc3339()
-            })
-    });
+            });
+    }
 
-    Ok(SkillMeta {
-        name,
-        version,
-        description,
-        tags,
-        path: skill_name.to_string(),
-        license,
-        updated_at,
-        checksum,
-        files: None,
-        install_status: None,
-        source_repo_id: None,
-    })
+    Ok(meta)
 }
 
 /// Build comparison list pairing local and remote skills from multiple repos
