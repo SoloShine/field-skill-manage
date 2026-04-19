@@ -4,6 +4,60 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.1.0] - 2026-04-20
+
+### ✨ Highlights
+
+**Skillbase/SPM Standard Compliance** — Full support for parsing and displaying Skillbase-standard SKILL.md frontmatter fields, including nested objects (trigger, security, compatibility, dependencies).
+
+### 🚀 Features
+
+- **serde_yaml Parsing** — Replaced hand-written YAML parser with `serde_yaml` crate, supporting nested objects and complex frontmatter
+- **Unified Data Model** — Consolidated `SkillFrontmatter` into `SkillMeta` as the single source of truth for all skill metadata
+- **Skillbase Metadata Fields** — Now parses and displays: `author`, `language`, `trigger` (description/tags/file_patterns), `security` (permissions), `compatibility` (min_context_tokens/requires/models), `dependencies`, `repository`
+- **SkillCard Enhancement** — Author name and language badge displayed inline; trigger.tags merged into tag display
+- **SkillPreviewModal Enhancement** — Full metadata panel showing trigger conditions, security permissions (dangerous ones highlighted), compatibility requirements, and dependency list
+- **skills.json Extension** — Manifest entries now support author, language, trigger, and security fields
+
+### 🌐 Internationalization
+
+- Added 7 new i18n keys for Skillbase metadata fields (author, language, repository, trigger, security, compatibility, dependencies) in both zh-CN and en-US
+
+### 📐 Architecture
+
+- Introduced `TriggerInfo`, `SecurityInfo`, `CompatibilityInfo` structs with `Default` derive and `#[serde(default)]` for backward compatibility
+- Added `Default` derive to `SkillMeta` and `InstallStatus`
+- Simplified `build_remote_skill_meta` and `build_local_skill_meta` using `Default` trait pattern
+
+---
+
+## [1.1.0] - 2026-04-20 (中文版)
+
+### ✨ 亮点
+
+**兼容 Skillbase/SPM 标准** — 完整支持解析和展示符合 Skillbase 标准的 SKILL.md frontmatter 字段，包括嵌套对象（trigger、security、compatibility、dependencies）。
+
+### 🚀 新功能
+
+- **serde_yaml 解析** — 用 `serde_yaml` crate 替代手写 YAML 解析器，支持嵌套对象和复杂 frontmatter
+- **统一数据模型** — 将 `SkillFrontmatter` 合并到 `SkillMeta`，作为唯一元数据模型
+- **Skillbase 元数据字段** — 解析并展示：`author`、`language`、`trigger`（description/tags/file_patterns）、`security`（permissions）、`compatibility`（min_context_tokens/requires/models）、`dependencies`、`repository`
+- **SkillCard 增强** — 内联显示作者名称和语言徽章；trigger.tags 合并到标签展示
+- **SkillPreviewModal 增强** — 完整元数据面板，展示触发条件、安全权限（危险权限高亮）、兼容性要求、依赖列表
+- **skills.json 扩展** — 清单条目支持 author、language、trigger、security 字段
+
+### 🌐 国际化
+
+- 新增 7 个 Skillbase 元数据相关的中英文翻译键（author、language、repository、trigger、security、compatibility、dependencies）
+
+### 📐 架构
+
+- 引入 `TriggerInfo`、`SecurityInfo`、`CompatibilityInfo` 结构体，带 `Default` derive 和 `#[serde(default)]` 保证向后兼容
+- `SkillMeta` 和 `InstallStatus` 添加 `Default` derive
+- 简化 `build_remote_skill_meta` 和 `build_local_skill_meta`，使用 `Default` trait 模式
+
+---
+
 ## [1.0.0] - 2026-04-16
 
 ### ✨ Highlights
