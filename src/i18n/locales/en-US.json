@@ -253,6 +253,21 @@
     "loading": "Loading...",
     "loadFailed": "Failed to load history: {error}"
   },
+  "skillbase": {
+    "satisfied": "Satisfied",
+    "missing": "Missing",
+    "mismatch": "Mismatch",
+    "outdated": "Outdated",
+    "syncDeps": "Sync Dependencies",
+    "syncSuccess": "Dependencies synced",
+    "syncPartial": "{count} dependency sync(s) failed",
+    "syncFailed": "Sync failed: {error}",
+    "generateLabel": "Generate skillbase.json",
+    "generateTitle": "Generate skillbase.json",
+    "generateFailed": "Generate failed: {error}",
+    "saveSuccess": "skillbase.json saved",
+    "saveFailed": "Save failed: {error}"
+  },
   "guide": {
     "title": "Skill Development Guide",
     "subtitle": "Learn how to create spm-compliant skill packages",
