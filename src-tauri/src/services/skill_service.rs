@@ -460,21 +460,38 @@ pub fn resolve_skillbase_dependencies(
         .unwrap_or_else(|| "{project}/.claude/skills".to_string());
     let local_dir = pattern.replace("{project}", project_path);
 
+    // Filter repos based on manifest.registry (exact match against RepoConfig.url)
+    let filtered_repos: Vec<&RepoConfig> = if let Some(ref registry_url) = manifest.registry {
+        let matched: Vec<&RepoConfig> = repos
+            .iter()
+            .filter(|r| r.enabled && r.url == *registry_url)
+            .collect();
+        if matched.is_empty() {
+            // Registry specified but no matching repo — fall back to all enabled repos
+            repos.iter().filter(|r| r.enabled).collect()
+        } else {
+            matched
+        }
+    } else {
+        repos.iter().filter(|r| r.enabled).collect()
+    };
+
     // Build index of all remote skills: (author, name) -> SkillMeta
     let mut remote_index: std::collections::HashMap<(String, String), SkillMeta> =
         std::collections::HashMap::new();
     let mut remote_by_name: std::collections::HashMap<String, SkillMeta> =
         std::collections::HashMap::new();
-    for repo in repos {
-        if !repo.enabled {
-            continue;
-        }
+    for repo in &filtered_repos {
         let entries = load_skill_entries(&repo.cache_path);
         for entry in &entries {
             if let Ok(meta) = build_remote_skill_meta(&repo.cache_path, entry, Some(&repo.id)) {
                 let author = meta.author.clone().unwrap_or_default();
-                remote_index.insert((author.clone(), meta.name.clone()), meta.clone());
-                remote_by_name.insert(meta.name.clone(), meta);
+                remote_index
+                    .entry((author.clone(), meta.name.clone()))
+                    .or_insert_with(|| meta.clone());
+                remote_by_name
+                    .entry(meta.name.clone())
+                    .or_insert_with(|| meta.clone());
             }
         }
     }
@@ -493,6 +510,7 @@ pub fn resolve_skillbase_dependencies(
     let mut satisfied_count = 0;
     let mut missing_count = 0;
     let mut mismatch_count = 0;
+    let mut outdated_count = 0;
 
     for (reference, version_range) in &manifest.skills {
         let (author, skill_name) = parse_skill_reference(reference);
@@ -509,22 +527,29 @@ pub fn resolve_skillbase_dependencies(
 
         let installed = local_map.get(&skill_name).cloned();
 
-        let status = match &installed {
-            Some(inst) => {
-                if semver_matches(&inst.version, version_range) {
-                    DependencyStatus::Satisfied
-                } else {
-                    DependencyStatus::VersionMismatch
-                }
+        let status = match (&installed, &resolved) {
+            // Installed but version doesn't satisfy the declared range
+            (Some(inst), _) if !semver_matches(&inst.version, version_range) => {
+                DependencyStatus::VersionMismatch
             }
-            None => DependencyStatus::Missing,
+            // Installed and satisfies range, but a newer compatible version is available
+            (Some(inst), Some(res))
+                if res.version != inst.version
+                    && semver_matches(&res.version, version_range) =>
+            {
+                DependencyStatus::Outdated
+            }
+            // Installed and satisfies range, no newer version available
+            (Some(_), _) => DependencyStatus::Satisfied,
+            // Not installed
+            (None, _) => DependencyStatus::Missing,
         };
 
         match &status {
             DependencyStatus::Satisfied => satisfied_count += 1,
             DependencyStatus::Missing => missing_count += 1,
             DependencyStatus::VersionMismatch => mismatch_count += 1,
-            DependencyStatus::Outdated => {}
+            DependencyStatus::Outdated => outdated_count += 1,
         }
 
         dependencies.push(DependencyEntry {
@@ -544,6 +569,7 @@ pub fn resolve_skillbase_dependencies(
         satisfied_count,
         missing_count,
         mismatch_count,
+        outdated_count,
     })
 }
 
@@ -553,6 +579,7 @@ pub fn generate_skillbase_manifest(
     project_name: &str,
     agent_project_patterns: &std::collections::HashMap<String, String>,
     active_agent_id: &str,
+    registry_url: Option<String>,
 ) -> Result<String, String> {
     let pattern = agent_project_patterns
         .get(active_agent_id)
@@ -581,7 +608,7 @@ pub fn generate_skillbase_manifest(
         version: "1.0.0".to_string(),
         skills,
         personas: std::collections::HashMap::new(),
-        registry: None,
+        registry: registry_url,
         spm: None,
     };
 

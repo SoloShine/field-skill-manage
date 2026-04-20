@@ -253,4 +253,5 @@ pub struct SkillbaseResolution {
     pub satisfied_count: usize,
     pub missing_count: usize,
     pub mismatch_count: usize,
+    pub outdated_count: usize,
 }

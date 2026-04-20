@@ -2,6 +2,7 @@ use tauri::State;
 
 use crate::commands::config::AppState;
 use crate::models::history::OperationType;
+use crate::models::config::RepoConfig;
 use crate::models::skill::{DependencyStatus, SkillComparison, SkillbaseResolution};
 use crate::services::{history_service, skill_service};
 
@@ -227,7 +228,7 @@ pub fn get_skillbase_resolution(
     skill_service::resolve_skillbase_dependencies(&project_path, &repos, &patterns, &active_id)
 }
 
-/// Install all missing/mismatched dependencies from skillbase.json
+/// Install all missing/mismatched/outdated dependencies from skillbase.json
 #[tauri::command]
 pub fn sync_skillbase_dependencies(
     state: State<'_, AppState>,
@@ -247,33 +248,79 @@ pub fn sync_skillbase_dependencies(
         &active_id,
     )?;
 
+    // Filter repos based on manifest.registry (same logic as resolution)
+    let filtered_repos: Vec<&RepoConfig> = if let Some(ref registry_url) = resolution.manifest.registry
+    {
+        let matched: Vec<&RepoConfig> = repos
+            .iter()
+            .filter(|r| r.enabled && r.url == *registry_url)
+            .collect();
+        if matched.is_empty() {
+            repos.iter().filter(|r| r.enabled).collect()
+        } else {
+            matched
+        }
+    } else {
+        repos.iter().filter(|r| r.enabled).collect()
+    };
+
     let mut results = Vec::new();
     for dep in &resolution.dependencies {
         match dep.status {
-            DependencyStatus::Missing | DependencyStatus::VersionMismatch => {
+            DependencyStatus::Missing
+            | DependencyStatus::VersionMismatch
+            | DependencyStatus::Outdated => {
                 let mut installed = false;
-                for repo in &repos {
-                    if !repo.enabled {
-                        continue;
-                    }
-                    let entries = skill_service::load_skill_entries(&repo.cache_path);
-                    if let Some(entry) = entries.iter().find(|s| s.name == dep.skill_name) {
-                        match skill_service::install_skill_to_dir(
-                            &repo.cache_path,
-                            &entry.path,
-                            &target_dir,
-                        ) {
-                            Ok(()) => {
-                                results.push(format!("{}: OK", dep.reference));
-                                installed = true;
-                                break;
-                            }
-                            Err(e) => {
-                                results.push(format!("{}: FAILED - {}", dep.reference, e));
+
+                // Prefer the repo that resolved the dependency
+                if let Some(ref resolved) = dep.resolved {
+                    if let Some(ref repo_id) = resolved.source_repo_id {
+                        if let Some(repo) = filtered_repos.iter().find(|r| r.id == *repo_id) {
+                            let entries = skill_service::load_skill_entries(&repo.cache_path);
+                            if let Some(entry) = entries.iter().find(|s| s.name == dep.skill_name)
+                            {
+                                match skill_service::install_skill_to_dir(
+                                    &repo.cache_path,
+                                    &entry.path,
+                                    &target_dir,
+                                ) {
+                                    Ok(()) => {
+                                        results.push(format!("{}: OK", dep.reference));
+                                        installed = true;
+                                    }
+                                    Err(e) => {
+                                        results
+                                            .push(format!("{}: FAILED - {}", dep.reference, e));
+                                    }
+                                }
                             }
                         }
                     }
                 }
+
+                // Fallback: search all filtered repos
+                if !installed {
+                    for repo in &filtered_repos {
+                        let entries = skill_service::load_skill_entries(&repo.cache_path);
+                        if let Some(entry) = entries.iter().find(|s| s.name == dep.skill_name) {
+                            match skill_service::install_skill_to_dir(
+                                &repo.cache_path,
+                                &entry.path,
+                                &target_dir,
+                            ) {
+                                Ok(()) => {
+                                    results.push(format!("{}: OK", dep.reference));
+                                    installed = true;
+                                    break;
+                                }
+                                Err(e) => {
+                                    results.push(format!("{}: FAILED - {}", dep.reference, e));
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if !installed && !results.iter().any(|r| r.starts_with(&dep.reference)) {
                     results.push(format!("{}: FAILED - not found in any repo", dep.reference));
                 }
@@ -293,6 +340,9 @@ pub fn generate_skillbase_json(
     let config = state.config.lock().map_err(|e| e.to_string())?;
     let active_id = config.active_agent_id.clone();
     let patterns = config.agent_project_patterns.clone();
+    let registry_url = config.repos.iter()
+        .find(|r| r.enabled)
+        .map(|r| r.url.clone());
     drop(config);
 
     let project_name = std::path::Path::new(&project_path)
@@ -300,7 +350,7 @@ pub fn generate_skillbase_json(
         .map(|f| f.to_string_lossy().to_string())
         .unwrap_or_else(|| "my-project".to_string());
 
-    skill_service::generate_skillbase_manifest(&project_path, &project_name, &patterns, &active_id)
+    skill_service::generate_skillbase_manifest(&project_path, &project_name, &patterns, &active_id, registry_url)
 }
 
 /// Write skillbase.json content to project root

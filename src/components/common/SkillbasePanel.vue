@@ -16,15 +16,15 @@ const emit = defineEmits<{
 }>()
 
 const hasUnsatisfied = computed(() => {
-  return props.resolution.missingCount + props.resolution.mismatchCount > 0
+  return props.resolution.missingCount + props.resolution.mismatchCount + props.resolution.outdatedCount > 0
 })
 
-function statusType(status: DependencyStatus): 'success' | 'warning' | 'error' | 'default' {
+function statusType(status: DependencyStatus): 'success' | 'warning' | 'error' | 'info' | 'default' {
   switch (status) {
     case 'Satisfied': return 'success'
     case 'Missing': return 'error'
     case 'VersionMismatch': return 'warning'
-    case 'Outdated': return 'warning'
+    case 'Outdated': return 'info'
   }
 }
 
@@ -56,6 +56,9 @@ function statusLabel(status: DependencyStatus): string {
         </NTag>
         <NTag v-if="resolution.mismatchCount > 0" size="small" round type="warning">
           {{ resolution.mismatchCount }} {{ t('skillbase.mismatch') }}
+        </NTag>
+        <NTag v-if="resolution.outdatedCount > 0" size="small" round type="warning">
+          {{ resolution.outdatedCount }} {{ t('skillbase.outdated') }}
         </NTag>
       </div>
       <div class="panel-actions">
@@ -141,7 +144,7 @@ function statusLabel(status: DependencyStatus): string {
 .dep-dot.satisfied { background: var(--color-status-same, #52c41a); }
 .dep-dot.missing { background: var(--color-status-remote, #ff4d4f); }
 .dep-dot.versionmismatch { background: var(--color-status-outdated, #faad14); }
-.dep-dot.outdated { background: var(--color-status-outdated, #faad14); }
+.dep-dot.outdated { background: #1890ff; }
 .dep-ref {
   font-family: var(--font-mono);
   font-weight: 500;

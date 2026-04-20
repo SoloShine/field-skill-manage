@@ -186,4 +186,5 @@ export interface SkillbaseResolution {
   satisfiedCount: number
   missingCount: number
   mismatchCount: number
+  outdatedCount: number
 }
