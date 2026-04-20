@@ -13,6 +13,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   sync: []
+  regenerate: []
 }>()
 
 const hasUnsatisfied = computed(() => {
@@ -62,6 +63,13 @@ function statusLabel(status: DependencyStatus): string {
         </NTag>
       </div>
       <div class="panel-actions">
+        <NButton
+          size="small"
+          quaternary
+          @click="emit('regenerate')"
+        >
+          {{ t('skillbase.regenerate') }}
+        </NButton>
         <NButton
           v-if="hasUnsatisfied"
           size="small"

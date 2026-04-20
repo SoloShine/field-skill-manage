@@ -260,6 +260,7 @@
     "mismatch": "版本不匹配",
     "outdated": "可更新",
     "syncDeps": "同步依赖",
+    "regenerate": "重新生成",
     "syncSuccess": "依赖同步完成",
     "syncPartial": "{count} 个依赖同步失败",
     "syncFailed": "同步失败: {error}",

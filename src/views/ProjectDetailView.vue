@@ -74,13 +74,13 @@ const stats = computed(() => {
   }
 })
 
-async function loadProjectSkills() {
+async function loadProjectDetail() {
   if (!projectStore.projectPath) {
     router.replace({ name: 'project' })
     return
   }
   try {
-    await skillStore.loadProjectSkills(projectStore.projectPath)
+    await skillStore.loadProjectDetail(projectStore.projectPath)
   } catch (e: any) {
     message.error(t('project.loadFailed', { error: e }))
   }
@@ -89,8 +89,7 @@ async function loadProjectSkills() {
 async function handleSync() {
   try {
     await skillStore.syncRemote()
-    await loadProjectSkills()
-    await loadSkillbaseData()
+    await loadProjectDetail()
     message.success(t('global.syncComplete'))
   } catch (e: any) {
     message.error(t('global.syncFailed', { error: e }))
@@ -102,7 +101,7 @@ async function handleInstall(name: string) {
   operatingKeys.add(name)
   try {
     await skillStore.installSkill(name, projectStore.projectPath)
-    await loadProjectSkills()
+    await loadProjectDetail()
     message.success(t('global.installSuccess', { name }))
   } catch (e: any) {
     message.error(t('global.installFailed', { error: e }))
@@ -116,7 +115,7 @@ async function handleUpdate(name: string) {
   operatingKeys.add(name)
   try {
     await skillStore.updateSkill(name, projectStore.projectPath)
-    await loadProjectSkills()
+    await loadProjectDetail()
     message.success(t('global.updateSuccess', { name }))
   } catch (e: any) {
     message.error(t('global.updateFailed', { error: e }))
@@ -130,7 +129,7 @@ async function handleUninstall(name: string) {
   operatingKeys.add(name)
   try {
     await skillStore.uninstallSkill(name, projectStore.projectPath)
-    await loadProjectSkills()
+    await loadProjectDetail()
     message.success(t('global.uninstallSuccess', { name }))
   } catch (e: any) {
     message.error(t('global.uninstallFailed', { error: e }))
@@ -156,7 +155,7 @@ async function handleBatchInstall(names: string[]) {
   for (const name of names) {
     try { await skillStore.installSkill(name, projectStore.projectPath!) } catch { /* skip */ }
   }
-  await loadProjectSkills()
+  await loadProjectDetail()
   message.success(t('global.syncComplete'))
 }
 
@@ -164,21 +163,15 @@ async function handleBatchUninstall(names: string[]) {
   for (const name of names) {
     try { await skillStore.uninstallSkill(name, projectStore.projectPath!) } catch { /* skip */ }
   }
-  await loadProjectSkills()
+  await loadProjectDetail()
   message.success(t('global.syncComplete'))
-}
-
-async function loadSkillbaseData() {
-  if (!projectStore.projectPath) return
-  await skillStore.loadSkillbase(projectStore.projectPath)
 }
 
 async function handleSkillbaseSync() {
   if (!projectStore.projectPath) return
   try {
     const results = await skillStore.syncSkillbase(projectStore.projectPath)
-    await loadProjectSkills()
-    await loadSkillbaseData()
+    await loadProjectDetail()
     const failed = results.filter(r => r.includes('FAILED'))
     if (failed.length > 0) {
       message.warning(t('skillbase.syncPartial', { count: failed.length }))
@@ -210,7 +203,7 @@ async function handleSaveSkillbase() {
   }
   try {
     await skillStore.writeSkillbase(projectStore.projectPath, generatedContent.value)
-    await loadSkillbaseData()
+    await loadProjectDetail()
     message.success(t('skillbase.saveSuccess'))
   } catch (e: any) {
     message.error(t('skillbase.saveFailed', { error: e }))
@@ -226,12 +219,11 @@ function updateTableHeight() {
   }
 }
 
-watch(() => configStore.config.active_agent_id, loadProjectSkills)
+watch(() => configStore.config.active_agent_id, loadProjectDetail)
 
 onMounted(async () => {
   await configStore.loadConfig()
-  await loadProjectSkills()
-  await loadSkillbaseData()
+  await loadProjectDetail()
   firstLoaded.value = true
 
   resizeObserver = new ResizeObserver(updateTableHeight)
@@ -283,6 +275,7 @@ onUnmounted(() => {
           :resolution="skillStore.skillbaseResolution"
           :syncing="skillStore.skillbaseSyncing"
           @sync="handleSkillbaseSync"
+          @regenerate="handleGenerateSkillbase"
         />
       </div>
       <div v-else class="skillbase-empty-action">
@@ -312,7 +305,7 @@ onUnmounted(() => {
         @preview="handlePreview"
         @diff="handleDiff"
         @batch-install="handleBatchInstall"
-        @batch-update="(names: string[]) => { skillStore.batchUpdate(names, projectStore.projectPath!).then(() => loadProjectSkills()) }"
+        @batch-update="(names: string[]) => { skillStore.batchUpdate(names, projectStore.projectPath!).then(() => loadProjectDetail()) }"
         @batch-uninstall="handleBatchUninstall"
       />
       <EmptyState v-else-if="skillStore.projectComparisons.length === 0" :title="t('project.emptySkillTitle')" :description="t('project.emptySkillDesc')" :action-label="t('project.emptySkillAction')" @action="handleSync" />

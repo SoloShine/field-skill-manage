@@ -260,6 +260,7 @@
     "mismatch": "Mismatch",
     "outdated": "Outdated",
     "syncDeps": "Sync Dependencies",
+    "regenerate": "Regenerate",
     "syncSuccess": "Dependencies synced",
     "syncPartial": "{count} dependency sync(s) failed",
     "syncFailed": "Sync failed: {error}",
