@@ -268,6 +268,7 @@
     "generateFailed": "Generate failed: {error}",
     "saveSuccess": "skillbase.json saved",
     "saveFailed": "Save failed: {error}",
+    "invalidJson": "Invalid JSON format, please check the content",
     "save": "Save",
     "cancel": "Cancel"
   },

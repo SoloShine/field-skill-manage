@@ -268,6 +268,7 @@
     "generateFailed": "生成失败: {error}",
     "saveSuccess": "skillbase.json 已保存",
     "saveFailed": "保存失败: {error}",
+    "invalidJson": "JSON 格式无效，请检查内容",
     "save": "保存",
     "cancel": "取消"
   },
