@@ -192,3 +192,65 @@ pub struct SkillComparison {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_repo_id: Option<String>,
 }
+
+/// spm-specific config inside skillbase.json
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct SpmConfig {
+    #[serde(default)]
+    pub default_instance: Option<String>,
+}
+
+/// Root of skillbase.json — project-level dependency manifest
+/// Spec: https://skillbase.space/docs/skill-json-spec
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SkillbaseManifest {
+    pub schema_version: u32,
+    pub name: String,
+    #[serde(default)]
+    pub version: String,
+    #[serde(default)]
+    pub skills: HashMap<String, String>,
+    #[serde(default)]
+    pub personas: HashMap<String, String>,
+    #[serde(default)]
+    pub registry: Option<String>,
+    #[serde(default)]
+    pub spm: Option<SpmConfig>,
+}
+
+/// Status of a single dependency resolution
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum DependencyStatus {
+    /// Installed and version satisfies the declared range
+    Satisfied,
+    /// No matching skill found in any repo
+    Missing,
+    /// Installed but version doesn't match the declared range
+    VersionMismatch,
+    /// Installed but a newer compatible version is available
+    Outdated,
+}
+
+/// A single resolved dependency entry
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DependencyEntry {
+    pub reference: String,
+    pub author: String,
+    pub skill_name: String,
+    pub version_range: String,
+    pub resolved: Option<SkillMeta>,
+    pub installed: Option<SkillMeta>,
+    pub status: DependencyStatus,
+}
+
+/// Complete resolution result for a project's skillbase.json
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillbaseResolution {
+    pub manifest: SkillbaseManifest,
+    pub dependencies: Vec<DependencyEntry>,
+    pub satisfied_count: usize,
+    pub missing_count: usize,
+    pub mismatch_count: usize,
+}
