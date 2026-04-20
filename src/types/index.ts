@@ -152,3 +152,38 @@ export interface OperationRecord {
   versionAfter?: string
   rollbackAvailable: boolean
 }
+
+// Skillbase types
+export interface SpmConfig {
+  default_instance?: string
+}
+
+export interface SkillbaseManifest {
+  schema_version: number
+  name: string
+  version: string
+  skills: Record<string, string>
+  personas: Record<string, string>
+  registry?: string
+  spm?: SpmConfig
+}
+
+export type DependencyStatus = 'Satisfied' | 'Missing' | 'VersionMismatch' | 'Outdated'
+
+export interface DependencyEntry {
+  reference: string
+  author: string
+  skillName: string
+  versionRange: string
+  resolved: SkillMeta | null
+  installed: SkillMeta | null
+  status: DependencyStatus
+}
+
+export interface SkillbaseResolution {
+  manifest: SkillbaseManifest
+  dependencies: DependencyEntry[]
+  satisfiedCount: number
+  missingCount: number
+  mismatchCount: number
+}

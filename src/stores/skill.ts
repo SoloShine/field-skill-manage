@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import type { SkillComparison, ProjectSkillSummary, SyncResult, SkillDiff, OperationRecord } from '@/types'
+import type { SkillComparison, ProjectSkillSummary, SyncResult, SkillDiff, OperationRecord, SkillbaseResolution } from '@/types'
 
 export const useSkillStore = defineStore('skill', () => {
   const globalComparisons = ref<SkillComparison[]>([])
@@ -11,6 +11,8 @@ export const useSkillStore = defineStore('skill', () => {
   const loading = ref(false)
   const lastSyncResult = ref<SyncResult | null>(null)
   const skillDiff = ref<SkillDiff | null>(null)
+  const skillbaseResolution = ref<SkillbaseResolution | null>(null)
+  const skillbaseSyncing = ref(false)
 
   async function syncRemote() {
     syncing.value = true
@@ -84,6 +86,33 @@ export const useSkillStore = defineStore('skill', () => {
     await invoke('clear_history')
   }
 
+  async function loadSkillbase(projectPath: string) {
+    try {
+      skillbaseResolution.value = await invoke<SkillbaseResolution>('get_skillbase_resolution', {
+        projectPath,
+      })
+    } catch {
+      skillbaseResolution.value = null
+    }
+  }
+
+  async function syncSkillbase(projectPath: string): Promise<string[]> {
+    skillbaseSyncing.value = true
+    try {
+      return await invoke<string[]>('sync_skillbase_dependencies', { projectPath })
+    } finally {
+      skillbaseSyncing.value = false
+    }
+  }
+
+  async function generateSkillbase(projectPath: string): Promise<string> {
+    return await invoke<string>('generate_skillbase_json', { projectPath })
+  }
+
+  async function writeSkillbase(projectPath: string, content: string): Promise<void> {
+    await invoke('write_skillbase_json', { projectPath, content })
+  }
+
   return {
     globalComparisons,
     projectComparisons,
@@ -92,6 +121,8 @@ export const useSkillStore = defineStore('skill', () => {
     loading,
     lastSyncResult,
     skillDiff,
+    skillbaseResolution,
+    skillbaseSyncing,
     syncRemote,
     loadGlobalSkills,
     loadProjectSkills,
@@ -104,5 +135,9 @@ export const useSkillStore = defineStore('skill', () => {
     getOperationHistory,
     rollbackOperation,
     clearHistory,
+    loadSkillbase,
+    syncSkillbase,
+    generateSkillbase,
+    writeSkillbase,
   }
 })
