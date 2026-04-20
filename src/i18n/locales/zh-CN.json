@@ -266,7 +266,9 @@
     "generateTitle": "生成 skillbase.json",
     "generateFailed": "生成失败: {error}",
     "saveSuccess": "skillbase.json 已保存",
-    "saveFailed": "保存失败: {error}"
+    "saveFailed": "保存失败: {error}",
+    "save": "保存",
+    "cancel": "取消"
   },
   "guide": {
     "title": "Skill 开发指南",

@@ -13,7 +13,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   sync: []
-  generate: []
 }>()
 
 const hasUnsatisfied = computed(() => {

@@ -201,14 +201,14 @@ async function handleGenerateSkillbase() {
 }
 
 async function handleSaveSkillbase() {
-  if (!projectStore.projectPath) return
+  if (!projectStore.projectPath) return false
   try {
     await skillStore.writeSkillbase(projectStore.projectPath, generatedContent.value)
-    showGenerateModal.value = false
     await loadSkillbaseData()
     message.success(t('skillbase.saveSuccess'))
   } catch (e: any) {
     message.error(t('skillbase.saveFailed', { error: e }))
+    return false
   }
 }
 
@@ -327,7 +327,7 @@ onUnmounted(() => {
       @close="showHistory = false"
     />
 
-    <NModal v-model:show="showGenerateModal" preset="dialog" :title="t('skillbase.generateTitle')" positive-text="Save" negative-text="Cancel" @positive-click="handleSaveSkillbase">
+    <NModal v-model:show="showGenerateModal" preset="dialog" :title="t('skillbase.generateTitle')" :positive-text="t('skillbase.save')" :negative-text="t('skillbase.cancel')" @positive-click="handleSaveSkillbase">
       <NInput type="textarea" :value="generatedContent" readonly :rows="12" style="font-family: var(--font-mono); font-size: 12px" />
     </NModal>
   </div>

@@ -266,7 +266,9 @@
     "generateTitle": "Generate skillbase.json",
     "generateFailed": "Generate failed: {error}",
     "saveSuccess": "skillbase.json saved",
-    "saveFailed": "Save failed: {error}"
+    "saveFailed": "Save failed: {error}",
+    "save": "Save",
+    "cancel": "Cancel"
   },
   "guide": {
     "title": "Skill Development Guide",
