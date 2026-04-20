@@ -4,6 +4,66 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.2.0] - 2026-04-21
+
+### ✨ Highlights
+
+**skillbase.json Dependency Management** — Full lifecycle support for project-level Skill dependency manifests. Auto-detect existing skillbase.json, resolve dependency status, one-click sync, and generate from installed skills.
+
+### 🚀 Features
+
+- **SkillbasePanel Component** — Dependency status visualization with color-coded tags (Satisfied / Missing / Mismatch / Outdated) and one-click sync button
+- **Dependency Resolution** — Parse skillbase.json, match against remote repos with registry-aware filtering, resolve version ranges via semver matching
+- **Skillbase Generation** — Generate skillbase.json from installed skills with smart registry selection (picks repo with highest overlap)
+- **Editable Preview** — Generate dialog allows user to edit content before saving, with JSON format validation
+- **Regenerate Support** — Regenerate button on SkillbasePanel for updating manifest after adding/removing skills
+- **Outdated Status** — New dependency status detecting installed-but-upgradable skills within declared version range
+- **Merged IPC Call** — Single `get_project_detail` command returns both skill comparisons and skillbase resolution, reducing round trips
+- **Guide Page Restructure** — TOC sidebar navigation, skillbase.json field reference table, copy-to-clipboard for all code blocks
+- **Operation History Layout** — Button grouped with "Sync Remote" in toolbar instead of centered
+
+### 🌐 Internationalization
+
+- Added skillbase-related i18n keys (satisfied, missing, mismatch, outdated, syncDeps, generateLabel, regenerate, invalidJson, etc.) for zh-CN and en-US
+
+### 🐛 Bug Fixes
+
+- Fixed vue-i18n compilation crash on guide page caused by unescaped `@` and `{}` in i18n values
+- Capped SkillbasePanel dependency list height to prevent pushing skill table off screen
+- Escaped `@author` in skills description to prevent linked message parsing
+
+---
+
+## [1.2.0] - 2026-04-21 (中文版)
+
+### ✨ 亮点
+
+**skillbase.json 依赖管理** — 完整支持项目级 Skill 依赖声明文件的全生命周期管理。自动检测已有 skillbase.json、解析依赖状态、一键同步、从已安装 Skill 反向生成。
+
+### 🚀 新功能
+
+- **SkillbasePanel 组件** — 依赖状态可视化，彩色标签展示（Satisfied / Missing / Mismatch / Outdated），一键同步按钮
+- **依赖解析** — 解析 skillbase.json，按 registry 过滤远端仓库，通过 semver 匹配解析版本范围
+- **skillbase.json 生成** — 从已安装 Skill 生成依赖清单，智能选取 registry（选择与本地重合度最高的仓库）
+- **可编辑预览** — 生成弹窗支持编辑后再保存，保存前进行 JSON 格式校验
+- **重新生成** — SkillbasePanel 上的重新生成按钮，新增/删除 Skill 后可更新清单
+- **Outdated 状态** — 新增依赖状态，检测已安装但可升级（仍在声明版本范围内）的 Skill
+- **合并 IPC 调用** — 新增 `get_project_detail` 命令，单次调用返回 Skill 对比和 skillbase 解析结果，减少通信开销
+- **指南页重构** — TOC 侧边栏导航、skillbase.json 字段参考表、所有代码块支持复制
+- **操作历史布局** — 按钮与"同步远端"并排排列，不再居中
+
+### 🌐 国际化
+
+- 新增 skillbase 相关中英文翻译键（satisfied、missing、mismatch、outdated、syncDeps、generateLabel、regenerate、invalidJson 等）
+
+### 🐛 问题修复
+
+- 修复指南页 vue-i18n 编译崩溃问题（i18n 值中未转义的 `@` 和 `{}`）
+- 限制 SkillbasePanel 依赖列表最大高度，防止将 Skill 表格挤出视口
+- 转义 skills 描述中的 `@author`，防止被解析为 linked message
+
+---
+
 ## [1.1.0] - 2026-04-20
 
 ### ✨ Highlights
