@@ -124,6 +124,8 @@ function statusLabel(status: DependencyStatus): string {
 }
 .dep-list {
   padding: 4px 0;
+  max-height: 200px;
+  overflow-y: auto;
 }
 .dep-item {
   display: flex;
