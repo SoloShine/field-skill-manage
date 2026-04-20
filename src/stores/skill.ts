@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import type { SkillComparison, ProjectSkillSummary, SyncResult, SkillDiff, OperationRecord, SkillbaseResolution } from '@/types'
+import type { SkillComparison, ProjectSkillSummary, SyncResult, SkillDiff, OperationRecord, SkillbaseResolution, ProjectDetailData } from '@/types'
 
 export const useSkillStore = defineStore('skill', () => {
   const globalComparisons = ref<SkillComparison[]>([])
@@ -96,6 +96,19 @@ export const useSkillStore = defineStore('skill', () => {
     }
   }
 
+  async function loadProjectDetail(projectPath: string) {
+    loading.value = true
+    try {
+      const data = await invoke<ProjectDetailData>('get_project_detail', {
+        projectPath,
+      })
+      projectComparisons.value = data.comparisons
+      skillbaseResolution.value = data.skillbase
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function syncSkillbase(projectPath: string): Promise<string[]> {
     skillbaseSyncing.value = true
     try {
@@ -136,6 +149,7 @@ export const useSkillStore = defineStore('skill', () => {
     rollbackOperation,
     clearHistory,
     loadSkillbase,
+    loadProjectDetail,
     syncSkillbase,
     generateSkillbase,
     writeSkillbase,

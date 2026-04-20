@@ -51,6 +51,7 @@ pub fn run() {
             skill::get_projects_overview,
             skill::get_global_skills,
             skill::get_project_skills,
+            skill::get_project_detail,
             skill::install_skill,
             skill::update_skill,
             skill::batch_update,

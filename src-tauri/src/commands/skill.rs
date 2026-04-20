@@ -3,7 +3,7 @@ use tauri::State;
 use crate::commands::config::AppState;
 use crate::models::history::OperationType;
 use crate::models::config::RepoConfig;
-use crate::models::skill::{DependencyStatus, SkillComparison, SkillbaseResolution};
+use crate::models::skill::{DependencyStatus, SkillComparison, SkillbaseResolution, ProjectDetailData};
 use crate::services::{history_service, skill_service};
 
 /// Get overview of skills for multiple projects
@@ -44,6 +44,21 @@ pub fn get_project_skills(
     drop(config);
 
     skill_service::build_skill_comparisons(&project_skills_dir, &repos)
+}
+
+/// Get both skill comparisons and skillbase resolution in a single IPC call
+#[tauri::command]
+pub fn get_project_detail(
+    state: State<'_, AppState>,
+    project_path: String,
+) -> Result<ProjectDetailData, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+    let repos = config.repos.clone();
+    let active_id = config.active_agent_id.clone();
+    let patterns = config.agent_project_patterns.clone();
+    drop(config);
+
+    skill_service::build_project_detail(&project_path, &repos, &patterns, &active_id)
 }
 
 #[tauri::command]

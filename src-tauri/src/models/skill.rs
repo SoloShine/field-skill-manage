@@ -255,3 +255,11 @@ pub struct SkillbaseResolution {
     pub mismatch_count: usize,
     pub outdated_count: usize,
 }
+
+/// Merged result for project detail page — single IPC call returns both
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectDetailData {
+    pub comparisons: Vec<SkillComparison>,
+    pub skillbase: Option<SkillbaseResolution>,
+}

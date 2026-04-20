@@ -188,3 +188,8 @@ export interface SkillbaseResolution {
   mismatchCount: number
   outdatedCount: number
 }
+
+export interface ProjectDetailData {
+  comparisons: SkillComparison[]
+  skillbase: SkillbaseResolution | null
+}

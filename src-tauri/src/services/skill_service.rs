@@ -3,6 +3,7 @@ use std::path::Path;
 use crate::models::skill::{
     DependencyEntry, DependencyStatus, FileDiff, FileDiffStatus, InstallStatus, SkillDiff,
     SkillManifestEntry, SkillMeta, SkillbaseManifest, SkillbaseResolution, SkillsManifest,
+    ProjectDetailData,
 };
 
 use crate::models::config::RepoConfig;
@@ -292,6 +293,186 @@ pub fn build_skill_comparisons(
     }
 
     Ok(comparisons)
+}
+
+/// Build both skill comparisons and skillbase resolution in one pass (shared indexes).
+/// Returns ProjectDetailData with comparisons always populated and skillbase only when skillbase.json exists.
+pub fn build_project_detail(
+    project_path: &str,
+    repos: &[RepoConfig],
+    agent_project_patterns: &std::collections::HashMap<String, String>,
+    active_agent_id: &str,
+) -> Result<ProjectDetailData, String> {
+    use crate::models::skill::{ComparisonStatus, SkillComparison};
+
+    let pattern = agent_project_patterns
+        .get(active_agent_id)
+        .cloned()
+        .unwrap_or_else(|| "{project}/.claude/skills".to_string());
+    let local_dir = pattern.replace("{project}", project_path);
+
+    // --- Build shared local_map ---
+    let local_names = list_installed_skills(&local_dir)?;
+    let mut local_map: std::collections::HashMap<String, SkillMeta> = std::collections::HashMap::new();
+    for name in &local_names {
+        if let Ok(meta) = build_local_skill_meta(&local_dir, name) {
+            local_map.insert(meta.name.clone(), meta);
+        }
+    }
+
+    // --- Build shared remote index ---
+    let mut all_remote_skills: Vec<SkillMeta> = Vec::new();
+    let mut remote_index: std::collections::HashMap<(String, String), SkillMeta> = std::collections::HashMap::new();
+    let mut remote_by_name: std::collections::HashMap<String, SkillMeta> = std::collections::HashMap::new();
+
+    for repo in repos {
+        if !repo.enabled {
+            continue;
+        }
+        let entries = load_skill_entries(&repo.cache_path);
+        for entry in &entries {
+            if let Ok(meta) = build_remote_skill_meta(&repo.cache_path, entry, Some(&repo.id)) {
+                let author = meta.author.clone().unwrap_or_default();
+                remote_index
+                    .entry((author.clone(), meta.name.clone()))
+                    .or_insert_with(|| meta.clone());
+                remote_by_name
+                    .entry(meta.name.clone())
+                    .or_insert_with(|| meta.clone());
+                all_remote_skills.push(meta);
+            }
+        }
+    }
+
+    // --- Build comparisons ---
+    let mut comparisons = Vec::new();
+    let mut local_matched = std::collections::HashSet::new();
+
+    for remote in &all_remote_skills {
+        let local = local_map.get(&remote.name).cloned();
+        if local.is_some() {
+            local_matched.insert(remote.name.clone());
+        }
+        let status = match (&local, Some(remote)) {
+            (Some(l), Some(r)) => {
+                let hash_match = match (&l.checksum, &r.checksum) {
+                    (Some(lc), Some(rc)) => lc.value == rc.value,
+                    _ => false,
+                };
+                if hash_match { ComparisonStatus::Same } else { ComparisonStatus::Outdated }
+            }
+            _ => ComparisonStatus::RemoteOnly,
+        };
+        comparisons.push(SkillComparison {
+            name: remote.name.clone(),
+            local,
+            remote: Some(remote.clone()),
+            status,
+            source_repo_id: remote.source_repo_id.clone(),
+        });
+    }
+
+    for (name, local) in &local_map {
+        if !local_matched.contains(name) {
+            comparisons.push(SkillComparison {
+                name: name.clone(),
+                local: Some(local.clone()),
+                remote: None,
+                status: ComparisonStatus::LocalOnly,
+                source_repo_id: None,
+            });
+        }
+    }
+
+    // --- Build skillbase resolution (if skillbase.json exists) ---
+    let skillbase = match parse_skillbase_manifest(project_path) {
+        Ok(manifest) => {
+            // Apply registry filtering: rebuild filtered remote indexes if needed
+            let (filt_index, filt_by_name) = if let Some(ref registry_url) = manifest.registry {
+                let matched: Vec<&RepoConfig> = repos
+                    .iter()
+                    .filter(|r| r.enabled && r.url == *registry_url)
+                    .collect();
+                if matched.is_empty() {
+                    // No matching repo — use unfiltered indexes
+                    (remote_index.clone(), remote_by_name.clone())
+                } else {
+                    // Rebuild indexes from matched repos only
+                    let mut fi: std::collections::HashMap<(String, String), SkillMeta> = std::collections::HashMap::new();
+                    let mut fn_: std::collections::HashMap<String, SkillMeta> = std::collections::HashMap::new();
+                    for repo in &matched {
+                        let entries = load_skill_entries(&repo.cache_path);
+                        for entry in &entries {
+                            if let Ok(meta) = build_remote_skill_meta(&repo.cache_path, entry, Some(&repo.id)) {
+                                let author = meta.author.clone().unwrap_or_default();
+                                fi.entry((author.clone(), meta.name.clone())).or_insert_with(|| meta.clone());
+                                fn_.entry(meta.name.clone()).or_insert_with(|| meta.clone());
+                            }
+                        }
+                    }
+                    (fi, fn_)
+                }
+            } else {
+                (remote_index.clone(), remote_by_name.clone())
+            };
+
+            let mut dependencies = Vec::new();
+            let mut satisfied_count = 0;
+            let mut missing_count = 0;
+            let mut mismatch_count = 0;
+            let mut outdated_count = 0;
+
+            for (reference, version_range) in &manifest.skills {
+                let (author, skill_name) = parse_skill_reference(reference);
+                let resolved = if !author.is_empty() {
+                    filt_index.get(&(author.clone(), skill_name.clone())).cloned()
+                        .or_else(|| filt_by_name.get(&skill_name).cloned())
+                } else {
+                    filt_by_name.get(&skill_name).cloned()
+                };
+                let installed = local_map.get(&skill_name).cloned();
+
+                let status = match (&installed, &resolved) {
+                    (Some(inst), _) if !semver_matches(&inst.version, version_range) => DependencyStatus::VersionMismatch,
+                    (Some(inst), Some(res)) if res.version != inst.version && semver_matches(&res.version, version_range) => DependencyStatus::Outdated,
+                    (Some(_), _) => DependencyStatus::Satisfied,
+                    (None, _) => DependencyStatus::Missing,
+                };
+
+                match &status {
+                    DependencyStatus::Satisfied => satisfied_count += 1,
+                    DependencyStatus::Missing => missing_count += 1,
+                    DependencyStatus::VersionMismatch => mismatch_count += 1,
+                    DependencyStatus::Outdated => outdated_count += 1,
+                }
+
+                dependencies.push(DependencyEntry {
+                    reference: reference.clone(),
+                    author,
+                    skill_name,
+                    version_range: version_range.clone(),
+                    resolved,
+                    installed,
+                    status,
+                });
+            }
+
+            Some(SkillbaseResolution {
+                manifest,
+                dependencies,
+                satisfied_count,
+                missing_count,
+                mismatch_count,
+                outdated_count,
+            })
+        }
+        Err(_) => None,
+    };
+
+    Ok(ProjectDetailData {
+        comparisons,
+        skillbase,
+    })
 }
 
 /// Install a skill by copying from remote cache to target directory
