@@ -573,13 +573,14 @@ pub fn resolve_skillbase_dependencies(
     })
 }
 
-/// Generate skillbase.json content from currently installed skills
+/// Generate skillbase.json content from currently installed skills.
+/// Picks the registry URL from the repo with the highest overlap with installed skills.
 pub fn generate_skillbase_manifest(
     project_path: &str,
     project_name: &str,
     agent_project_patterns: &std::collections::HashMap<String, String>,
     active_agent_id: &str,
-    registry_url: Option<String>,
+    repos: &[crate::models::config::RepoConfig],
 ) -> Result<String, String> {
     let pattern = agent_project_patterns
         .get(active_agent_id)
@@ -601,6 +602,31 @@ pub fn generate_skillbase_manifest(
             skills.insert(format!("@{}/{}", author, name), version);
         }
     }
+
+    // Find the repo with the most matching skills to use as registry
+    let registry_url = if !local_names.is_empty() {
+        repos
+            .iter()
+            .filter(|r| r.enabled)
+            .filter_map(|repo| {
+                let entries = load_skill_entries(&repo.cache_path);
+                let remote_names: std::collections::HashSet<&str> =
+                    entries.iter().map(|e| e.name.as_str()).collect();
+                let match_count = local_names
+                    .iter()
+                    .filter(|n| remote_names.contains(n.as_str()))
+                    .count();
+                if match_count > 0 {
+                    Some((match_count, repo.url.clone()))
+                } else {
+                    None
+                }
+            })
+            .max_by_key(|(count, _)| *count)
+            .map(|(_, url)| url)
+    } else {
+        None
+    };
 
     let manifest = SkillbaseManifest {
         schema_version: 1,

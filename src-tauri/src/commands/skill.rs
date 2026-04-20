@@ -340,9 +340,7 @@ pub fn generate_skillbase_json(
     let config = state.config.lock().map_err(|e| e.to_string())?;
     let active_id = config.active_agent_id.clone();
     let patterns = config.agent_project_patterns.clone();
-    let registry_url = config.repos.iter()
-        .find(|r| r.enabled)
-        .map(|r| r.url.clone());
+    let repos = config.repos.clone();
     drop(config);
 
     let project_name = std::path::Path::new(&project_path)
@@ -350,7 +348,7 @@ pub fn generate_skillbase_json(
         .map(|f| f.to_string_lossy().to_string())
         .unwrap_or_else(|| "my-project".to_string());
 
-    skill_service::generate_skillbase_manifest(&project_path, &project_name, &patterns, &active_id, registry_url)
+    skill_service::generate_skillbase_manifest(&project_path, &project_name, &patterns, &active_id, &repos)
 }
 
 /// Write skillbase.json content to project root
