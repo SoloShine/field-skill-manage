@@ -1,9 +1,11 @@
 use std::path::Path;
 
 use crate::models::skill::{
-    FileDiff, FileDiffStatus, InstallStatus, SkillDiff, SkillManifestEntry, SkillMeta,
-    SkillsManifest,
+    DependencyEntry, DependencyStatus, FileDiff, FileDiffStatus, InstallStatus, SkillDiff,
+    SkillManifestEntry, SkillMeta, SkillbaseManifest, SkillbaseResolution, SkillsManifest,
 };
+
+use crate::models::config::RepoConfig;
 
 /// Parse skills.json from a repository root
 pub fn parse_manifest(repo_path: &str) -> Result<SkillsManifest, String> {
@@ -360,6 +362,230 @@ pub fn list_installed_skills(dir: &str) -> Result<Vec<String>, String> {
     }
 
     Ok(skills)
+}
+
+/// Parse "X.Y.Z" into (major, minor, patch)
+fn parse_semver(version: &str) -> Option<(u32, u32, u32)> {
+    let v = version.trim_start_matches('v');
+    let parts: Vec<&str> = v.split('.').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+    Some((
+        parts[0].parse().ok()?,
+        parts[1].parse().ok()?,
+        parts[2].parse().ok()?,
+    ))
+}
+
+/// Check if a version string satisfies a semver range
+/// Supports: "*", "^X.Y.Z", "~X.Y.Z", ">=X.Y.Z", exact "X.Y.Z"
+fn semver_matches(version: &str, range: &str) -> bool {
+    let ver = match parse_semver(version) {
+        Some(v) => v,
+        None => return false,
+    };
+
+    let range = range.trim();
+
+    if range == "*" || range.is_empty() {
+        return true;
+    }
+
+    if let Some(rest) = range.strip_prefix('^') {
+        let target = match parse_semver(rest) {
+            Some(v) => v,
+            None => return false,
+        };
+        if target.0 != 0 {
+            ver.0 == target.0 && ver >= target
+        } else if target.1 != 0 {
+            ver.0 == 0 && ver.1 == target.1 && ver >= target
+        } else {
+            ver == target
+        }
+    } else if let Some(rest) = range.strip_prefix('~') {
+        let target = match parse_semver(rest) {
+            Some(v) => v,
+            None => return false,
+        };
+        ver.0 == target.0 && ver.1 == target.1 && ver >= target
+    } else if let Some(rest) = range.strip_prefix(">=") {
+        let target = match parse_semver(rest.trim()) {
+            Some(v) => v,
+            None => return false,
+        };
+        ver >= target
+    } else {
+        parse_semver(range).map(|t| ver == t).unwrap_or(false)
+    }
+}
+
+/// Parse "@author/name" or "author/name" into (author, name).
+/// Returns ("", name) if no slash is found.
+fn parse_skill_reference(reference: &str) -> (String, String) {
+    let trimmed = reference.trim_start_matches('@');
+    if let Some(slash_pos) = trimmed.find('/') {
+        return (
+            trimmed[..slash_pos].to_string(),
+            trimmed[slash_pos + 1..].to_string(),
+        );
+    }
+    (String::new(), reference.to_string())
+}
+
+/// Parse skillbase.json from a project root directory
+pub fn parse_skillbase_manifest(project_path: &str) -> Result<SkillbaseManifest, String> {
+    let path = Path::new(project_path).join("skillbase.json");
+    if !path.exists() {
+        return Err("skillbase.json not found in project root".to_string());
+    }
+    let content =
+        std::fs::read_to_string(&path).map_err(|e| format!("Read skillbase.json: {}", e))?;
+    serde_json::from_str(&content).map_err(|e| format!("Parse skillbase.json: {}", e))
+}
+
+/// Resolve all dependencies declared in a project's skillbase.json
+pub fn resolve_skillbase_dependencies(
+    project_path: &str,
+    repos: &[RepoConfig],
+    agent_project_patterns: &std::collections::HashMap<String, String>,
+    active_agent_id: &str,
+) -> Result<SkillbaseResolution, String> {
+    let manifest = parse_skillbase_manifest(project_path)?;
+
+    let pattern = agent_project_patterns
+        .get(active_agent_id)
+        .cloned()
+        .unwrap_or_else(|| "{project}/.claude/skills".to_string());
+    let local_dir = pattern.replace("{project}", project_path);
+
+    // Build index of all remote skills: (author, name) -> SkillMeta
+    let mut remote_index: std::collections::HashMap<(String, String), SkillMeta> =
+        std::collections::HashMap::new();
+    let mut remote_by_name: std::collections::HashMap<String, SkillMeta> =
+        std::collections::HashMap::new();
+    for repo in repos {
+        if !repo.enabled {
+            continue;
+        }
+        let entries = load_skill_entries(&repo.cache_path);
+        for entry in &entries {
+            if let Ok(meta) = build_remote_skill_meta(&repo.cache_path, entry, Some(&repo.id)) {
+                let author = meta.author.clone().unwrap_or_default();
+                remote_index.insert((author.clone(), meta.name.clone()), meta.clone());
+                remote_by_name.insert(meta.name.clone(), meta);
+            }
+        }
+    }
+
+    // Build index of locally installed skills: name -> SkillMeta
+    let local_names = list_installed_skills(&local_dir)?;
+    let mut local_map: std::collections::HashMap<String, SkillMeta> =
+        std::collections::HashMap::new();
+    for name in &local_names {
+        if let Ok(meta) = build_local_skill_meta(&local_dir, name) {
+            local_map.insert(meta.name.clone(), meta);
+        }
+    }
+
+    let mut dependencies = Vec::new();
+    let mut satisfied_count = 0;
+    let mut missing_count = 0;
+    let mut mismatch_count = 0;
+
+    for (reference, version_range) in &manifest.skills {
+        let (author, skill_name) = parse_skill_reference(reference);
+
+        // Try to find remote match: first by (author, name), then by name only
+        let resolved = if !author.is_empty() {
+            remote_index
+                .get(&(author.clone(), skill_name.clone()))
+                .cloned()
+                .or_else(|| remote_by_name.get(&skill_name).cloned())
+        } else {
+            remote_by_name.get(&skill_name).cloned()
+        };
+
+        let installed = local_map.get(&skill_name).cloned();
+
+        let status = match &installed {
+            Some(inst) => {
+                if semver_matches(&inst.version, version_range) {
+                    DependencyStatus::Satisfied
+                } else {
+                    DependencyStatus::VersionMismatch
+                }
+            }
+            None => DependencyStatus::Missing,
+        };
+
+        match &status {
+            DependencyStatus::Satisfied => satisfied_count += 1,
+            DependencyStatus::Missing => missing_count += 1,
+            DependencyStatus::VersionMismatch => mismatch_count += 1,
+            DependencyStatus::Outdated => {}
+        }
+
+        dependencies.push(DependencyEntry {
+            reference: reference.clone(),
+            author,
+            skill_name,
+            version_range: version_range.clone(),
+            resolved,
+            installed,
+            status,
+        });
+    }
+
+    Ok(SkillbaseResolution {
+        manifest,
+        dependencies,
+        satisfied_count,
+        missing_count,
+        mismatch_count,
+    })
+}
+
+/// Generate skillbase.json content from currently installed skills
+pub fn generate_skillbase_manifest(
+    project_path: &str,
+    project_name: &str,
+    agent_project_patterns: &std::collections::HashMap<String, String>,
+    active_agent_id: &str,
+) -> Result<String, String> {
+    let pattern = agent_project_patterns
+        .get(active_agent_id)
+        .cloned()
+        .unwrap_or_else(|| "{project}/.claude/skills".to_string());
+    let local_dir = pattern.replace("{project}", project_path);
+
+    let local_names = list_installed_skills(&local_dir)?;
+    let mut skills = std::collections::HashMap::new();
+
+    for name in &local_names {
+        if let Ok(meta) = build_local_skill_meta(&local_dir, name) {
+            let author = meta.author.as_deref().unwrap_or("local");
+            let version = if meta.version.is_empty() {
+                "*".to_string()
+            } else {
+                format!("^{}", meta.version)
+            };
+            skills.insert(format!("@{}/{}", author, name), version);
+        }
+    }
+
+    let manifest = SkillbaseManifest {
+        schema_version: 1,
+        name: project_name.to_string(),
+        version: "1.0.0".to_string(),
+        skills,
+        personas: std::collections::HashMap::new(),
+        registry: None,
+        spm: None,
+    };
+
+    serde_json::to_string_pretty(&manifest).map_err(|e| format!("Serialize: {}", e))
 }
 
 /// Summary for a single project's skills
