@@ -25,7 +25,8 @@
     "remove": "移除",
     "loading": "加载中...",
     "browse": "浏览...",
-    "back": "返回"
+    "back": "返回",
+    "copied": "已复制"
   },
   "status": {
     "all": "全部",
@@ -323,6 +324,25 @@
       "desc": "声明 Skill 间的依赖关系和运行时兼容性要求。",
       "deps": "依赖其他 Skill，使用 author/name: semver-range 格式",
       "compatibility": "兼容性要求：min_context_tokens（最小上下文）、requires（必要能力）、models（限定模型，空数组=全部）"
+    },
+    "skillbase": {
+      "title": "skillbase.json 项目依赖",
+      "desc": "skillbase.json 是项目级 Skill 依赖声明文件，等同于 npm 的 package.json。放在项目根目录，用于声明项目所需的 Skill 及版本范围。通过「同步依赖」可一键安装所有缺失的 Skill。",
+      "field": "字段",
+      "required": "必填",
+      "type": "类型",
+      "description": "说明",
+      "rows": {
+        "schema_version": "始终为 1",
+        "name": "项目标识符",
+        "version": "项目版本号（semver）",
+        "skills": "Skill 依赖，格式为 \"@author/name\": \"semver\"",
+        "personas": "Persona 依赖（可选）",
+        "registry": "覆盖默认 Registry URL（可选）",
+        "spm": "SPM 配置（可选）"
+      },
+      "example": "{\n  \"schema_version\": 1,\n  \"name\": \"my-project\",\n  \"version\": \"1.0.0\",\n  \"skills\": {\n    \"@core/docx\": \"^1.2.0\",\n    \"@core/xlsx\": \"^1.0.0\"\n  },\n  \"personas\": {},\n  \"registry\": \"https://registry.skillbase.space\"\n}",
+      "workflow": "在 SPM Manager 中使用：添加项目后，若项目根目录存在 skillbase.json，项目详情页会自动展示依赖状态面板，支持一键同步缺失依赖。若不存在，可点击「生成 skillbase.json」从已安装 Skill 反向生成。"
     },
     "body": {
       "title": "Body 编写规范",

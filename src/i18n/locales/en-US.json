@@ -25,7 +25,8 @@
     "remove": "Remove",
     "loading": "Loading...",
     "browse": "Browse...",
-    "back": "Back"
+    "back": "Back",
+    "copied": "Copied!"
   },
   "status": {
     "all": "All",
@@ -323,6 +324,25 @@
       "desc": "Declare skill dependencies and runtime compatibility requirements.",
       "deps": "Depend on other skills using author/name: semver-range format",
       "compatibility": "Compatibility: min_context_tokens, requires (capabilities), models (restrict to models, empty = all)"
+    },
+    "skillbase": {
+      "title": "skillbase.json Project Dependencies",
+      "desc": "skillbase.json is the project-level Skill dependency manifest, equivalent to npm's package.json. Place it at the project root to declare required Skills and version ranges. Use \"Sync Dependencies\" to install all missing Skills with one click.",
+      "field": "Field",
+      "required": "Required",
+      "type": "Type",
+      "description": "Description",
+      "rows": {
+        "schema_version": "Always 1",
+        "name": "Project identifier",
+        "version": "Project version (semver)",
+        "skills": "Skill dependencies as \"@author/name\": \"semver\"",
+        "personas": "Persona dependencies (optional)",
+        "registry": "Override default Registry URL (optional)",
+        "spm": "SPM configuration (optional)"
+      },
+      "example": "{\n  \"schema_version\": 1,\n  \"name\": \"my-project\",\n  \"version\": \"1.0.0\",\n  \"skills\": {\n    \"@core/docx\": \"^1.2.0\",\n    \"@core/xlsx\": \"^1.0.0\"\n  },\n  \"personas\": {},\n  \"registry\": \"https://registry.skillbase.space\"\n}",
+      "workflow": "Using in SPM Manager: After adding a project, if skillbase.json exists in the project root, the project detail page automatically shows a dependency status panel with one-click sync for missing dependencies. If it doesn't exist, click \"Generate skillbase.json\" to create one from installed Skills."
     },
     "body": {
       "title": "Body Writing Guide",
