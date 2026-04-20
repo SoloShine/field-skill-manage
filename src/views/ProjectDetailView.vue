@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, computed, watch, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NInput, NSpin, NSkeleton, NBreadcrumb, NBreadcrumbItem, NText, useMessage } from 'naive-ui'
+import { NButton, NInput, NSpin, NSkeleton, NBreadcrumb, NBreadcrumbItem, NText, NModal, useMessage } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
 import { useProjectStore } from '@/stores/project'
 import SkillCompareTable from '@/components/common/SkillCompareTable.vue'
 import SkillPreviewModal from '@/components/common/SkillPreviewModal.vue'
+import SkillbasePanel from '@/components/common/SkillbasePanel.vue'
 import SkillDiffViewer from '@/components/common/SkillDiffViewer.vue'
 import OperationHistoryPanel from '@/components/common/OperationHistoryPanel.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -33,6 +34,8 @@ let resizeObserver: ResizeObserver | null = null
 
 const operatingKeys = reactive(new Set<string>())
 const firstLoaded = ref(false)
+const showGenerateModal = ref(false)
+const generatedContent = ref('')
 
 function handleSearchShortcut(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -87,6 +90,7 @@ async function handleSync() {
   try {
     await skillStore.syncRemote()
     await loadProjectSkills()
+    await loadSkillbaseData()
     message.success(t('global.syncComplete'))
   } catch (e: any) {
     message.error(t('global.syncFailed', { error: e }))
@@ -164,6 +168,50 @@ async function handleBatchUninstall(names: string[]) {
   message.success(t('global.syncComplete'))
 }
 
+async function loadSkillbaseData() {
+  if (!projectStore.projectPath) return
+  await skillStore.loadSkillbase(projectStore.projectPath)
+}
+
+async function handleSkillbaseSync() {
+  if (!projectStore.projectPath) return
+  try {
+    const results = await skillStore.syncSkillbase(projectStore.projectPath)
+    await loadProjectSkills()
+    await loadSkillbaseData()
+    const failed = results.filter(r => r.includes('FAILED'))
+    if (failed.length > 0) {
+      message.warning(t('skillbase.syncPartial', { count: failed.length }))
+    } else {
+      message.success(t('skillbase.syncSuccess'))
+    }
+  } catch (e: any) {
+    message.error(t('skillbase.syncFailed', { error: e }))
+  }
+}
+
+async function handleGenerateSkillbase() {
+  if (!projectStore.projectPath) return
+  try {
+    generatedContent.value = await skillStore.generateSkillbase(projectStore.projectPath)
+    showGenerateModal.value = true
+  } catch (e: any) {
+    message.error(t('skillbase.generateFailed', { error: e }))
+  }
+}
+
+async function handleSaveSkillbase() {
+  if (!projectStore.projectPath) return
+  try {
+    await skillStore.writeSkillbase(projectStore.projectPath, generatedContent.value)
+    showGenerateModal.value = false
+    await loadSkillbaseData()
+    message.success(t('skillbase.saveSuccess'))
+  } catch (e: any) {
+    message.error(t('skillbase.saveFailed', { error: e }))
+  }
+}
+
 function updateTableHeight() {
   if (viewRef.value && headerRef.value) {
     const viewH = viewRef.value.clientHeight
@@ -177,6 +225,7 @@ watch(() => configStore.config.active_agent_id, loadProjectSkills)
 onMounted(async () => {
   await configStore.loadConfig()
   await loadProjectSkills()
+  await loadSkillbaseData()
   firstLoaded.value = true
 
   resizeObserver = new ResizeObserver(updateTableHeight)
@@ -221,6 +270,18 @@ onUnmounted(() => {
           <NInput ref="searchInputRef" v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
         </div>
       </template>
+      <div v-if="skillStore.skillbaseResolution" class="skillbase-section">
+        <SkillbasePanel
+          :resolution="skillStore.skillbaseResolution"
+          :syncing="skillStore.skillbaseSyncing"
+          @sync="handleSkillbaseSync"
+        />
+      </div>
+      <div v-else class="skillbase-empty-action">
+        <NButton size="tiny" quaternary @click="handleGenerateSkillbase">
+          {{ t('skillbase.generateLabel') }}
+        </NButton>
+      </div>
     </div>
 
     <div v-if="!firstLoaded && skillStore.loading" class="skeleton-wrapper">
@@ -265,6 +326,10 @@ onUnmounted(() => {
       v-if="showHistory"
       @close="showHistory = false"
     />
+
+    <NModal v-model:show="showGenerateModal" preset="dialog" :title="t('skillbase.generateTitle')" positive-text="Save" negative-text="Cancel" @positive-click="handleSaveSkillbase">
+      <NInput type="textarea" :value="generatedContent" readonly :rows="12" style="font-family: var(--font-mono); font-size: 12px" />
+    </NModal>
   </div>
 </template>
 
@@ -328,5 +393,11 @@ onUnmounted(() => {
 }
 .skeleton-wrapper {
   padding: 20px 0;
+}
+.skillbase-section {
+  margin-top: 8px;
+}
+.skillbase-empty-action {
+  margin-top: 4px;
 }
 </style>
