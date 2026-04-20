@@ -6,6 +6,20 @@ import { open } from '@tauri-apps/plugin-shell'
 
 const { t } = useI18n()
 
+// JSON examples are defined here as plain strings to avoid vue-i18n
+// parsing curly braces as template placeholders
+const SKILLBASE_JSON_EXAMPLE = `{
+  "schema_version": 1,
+  "name": "my-project",
+  "version": "1.0.0",
+  "skills": {
+    "@core/docx": "^1.2.0",
+    "@core/xlsx": "^1.0.0"
+  },
+  "personas": {},
+  "registry": "https://registry.skillbase.space"
+}`
+
 // --- Data arrays ---
 
 const requiredFields = [
@@ -137,7 +151,7 @@ const copyCode = async (text: string, index: number) => {
 // Collect all code block contents for copy functionality
 const codeBlocks = [
   () => t('guide.structure.tree'),        // 0
-  () => t('guide.skillbase.example'),      // 1
+  () => SKILLBASE_JSON_EXAMPLE,             // 1
   () => t('guide.example.code'),           // 2
   () => t('guide.validate.manifestTree'),  // 3
   () => t('guide.validate.scanTree'),      // 4
@@ -298,7 +312,7 @@ const codeBlocks = [
               <span v-if="copiedIndex === 1">{{ t('common.copied') ?? 'Copied!' }}</span>
               <span v-else class="copy-icon">&#x2398;</span>
             </button>
-            <pre class="code-block"><code>{{ t('guide.skillbase.example') }}</code></pre>
+            <pre class="code-block"><code>{{ SKILLBASE_JSON_EXAMPLE }}</code></pre>
           </div>
           <NP style="margin-top: 12px;">{{ t('guide.skillbase.workflow') }}</NP>
         </NCard>

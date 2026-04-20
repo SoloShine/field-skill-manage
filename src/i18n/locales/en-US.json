@@ -336,12 +336,12 @@
         "schema_version": "Always 1",
         "name": "Project identifier",
         "version": "Project version (semver)",
-        "skills": "Skill dependencies as \"@author/name\": \"semver\"",
+        "skills": "Skill dependencies as \"{'@'}author/name\": \"semver\"",
         "personas": "Persona dependencies (optional)",
         "registry": "Override default Registry URL (optional)",
         "spm": "SPM configuration (optional)"
       },
-      "example": "{\n  \"schema_version\": 1,\n  \"name\": \"my-project\",\n  \"version\": \"1.0.0\",\n  \"skills\": {\n    \"@core/docx\": \"^1.2.0\",\n    \"@core/xlsx\": \"^1.0.0\"\n  },\n  \"personas\": {},\n  \"registry\": \"https://registry.skillbase.space\"\n}",
+      "example": "",
       "workflow": "Using in SPM Manager: After adding a project, if skillbase.json exists in the project root, the project detail page automatically shows a dependency status panel with one-click sync for missing dependencies. If it doesn't exist, click \"Generate skillbase.json\" to create one from installed Skills."
     },
     "body": {
