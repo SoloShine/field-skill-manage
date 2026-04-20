@@ -55,6 +55,10 @@ pub fn run() {
             skill::update_skill,
             skill::batch_update,
             skill::uninstall_skill,
+            skill::get_skillbase_resolution,
+            skill::sync_skillbase_dependencies,
+            skill::generate_skillbase_json,
+            skill::write_skillbase_json,
             // Version
             version::calculate_skill_hash,
             version::compare_skill_versions,

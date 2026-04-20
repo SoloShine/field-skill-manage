@@ -2,7 +2,7 @@ use tauri::State;
 
 use crate::commands::config::AppState;
 use crate::models::history::OperationType;
-use crate::models::skill::SkillComparison;
+use crate::models::skill::{DependencyStatus, SkillComparison, SkillbaseResolution};
 use crate::services::{history_service, skill_service};
 
 /// Get overview of skills for multiple projects
@@ -210,4 +210,102 @@ pub fn uninstall_skill(
     } else {
         Err(format!("Skill '{}' not found at {}", skill_name, skill_path.display()))
     }
+}
+
+/// Resolve skillbase.json dependencies for a project
+#[tauri::command]
+pub fn get_skillbase_resolution(
+    state: State<'_, AppState>,
+    project_path: String,
+) -> Result<SkillbaseResolution, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+    let repos = config.repos.clone();
+    let active_id = config.active_agent_id.clone();
+    let patterns = config.agent_project_patterns.clone();
+    drop(config);
+
+    skill_service::resolve_skillbase_dependencies(&project_path, &repos, &patterns, &active_id)
+}
+
+/// Install all missing/mismatched dependencies from skillbase.json
+#[tauri::command]
+pub fn sync_skillbase_dependencies(
+    state: State<'_, AppState>,
+    project_path: String,
+) -> Result<Vec<String>, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+    let repos = config.repos.clone();
+    let active_id = config.active_agent_id.clone();
+    let patterns = config.agent_project_patterns.clone();
+    let target_dir = config.active_project_dir(&project_path);
+    drop(config);
+
+    let resolution = skill_service::resolve_skillbase_dependencies(
+        &project_path,
+        &repos,
+        &patterns,
+        &active_id,
+    )?;
+
+    let mut results = Vec::new();
+    for dep in &resolution.dependencies {
+        match dep.status {
+            DependencyStatus::Missing | DependencyStatus::VersionMismatch => {
+                let mut installed = false;
+                for repo in &repos {
+                    if !repo.enabled {
+                        continue;
+                    }
+                    let entries = skill_service::load_skill_entries(&repo.cache_path);
+                    if let Some(entry) = entries.iter().find(|s| s.name == dep.skill_name) {
+                        match skill_service::install_skill_to_dir(
+                            &repo.cache_path,
+                            &entry.path,
+                            &target_dir,
+                        ) {
+                            Ok(()) => {
+                                results.push(format!("{}: OK", dep.reference));
+                                installed = true;
+                                break;
+                            }
+                            Err(e) => {
+                                results.push(format!("{}: FAILED - {}", dep.reference, e));
+                            }
+                        }
+                    }
+                }
+                if !installed && !results.iter().any(|r| r.starts_with(&dep.reference)) {
+                    results.push(format!("{}: FAILED - not found in any repo", dep.reference));
+                }
+            }
+            _ => results.push(format!("{}: SKIP (satisfied)", dep.reference)),
+        }
+    }
+    Ok(results)
+}
+
+/// Generate skillbase.json content from currently installed skills
+#[tauri::command]
+pub fn generate_skillbase_json(
+    state: State<'_, AppState>,
+    project_path: String,
+) -> Result<String, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+    let active_id = config.active_agent_id.clone();
+    let patterns = config.agent_project_patterns.clone();
+    drop(config);
+
+    let project_name = std::path::Path::new(&project_path)
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_else(|| "my-project".to_string());
+
+    skill_service::generate_skillbase_manifest(&project_path, &project_name, &patterns, &active_id)
+}
+
+/// Write skillbase.json content to project root
+#[tauri::command]
+pub fn write_skillbase_json(project_path: String, content: String) -> Result<(), String> {
+    let path = std::path::Path::new(&project_path).join("skillbase.json");
+    std::fs::write(&path, &content).map_err(|e| format!("Write skillbase.json: {}", e))
 }
