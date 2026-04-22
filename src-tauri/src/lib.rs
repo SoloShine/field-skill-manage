@@ -60,6 +60,10 @@ pub fn run() {
             skill::sync_skillbase_dependencies,
             skill::generate_skillbase_json,
             skill::write_skillbase_json,
+            skill::scan_agent_skills,
+            skill::migrate_skills,
+            skill::get_migrate_skill_diff,
+            skill::get_migrate_diff_content,
             // Version
             version::calculate_skill_hash,
             version::compare_skill_versions,

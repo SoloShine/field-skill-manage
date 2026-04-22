@@ -3,7 +3,7 @@ use tauri::State;
 use crate::commands::config::AppState;
 use crate::models::history::OperationType;
 use crate::models::config::RepoConfig;
-use crate::models::skill::{DependencyStatus, SkillComparison, SkillbaseResolution, ProjectDetailData};
+use crate::models::skill::{DependencyStatus, SkillComparison, SkillbaseResolution, ProjectDetailData, ScanAgentSkillsResult, ConflictResolution, MigrateResult, SkillDiff};
 use crate::services::{history_service, skill_service};
 
 /// Get overview of skills for multiple projects
@@ -371,4 +371,192 @@ pub fn generate_skillbase_json(
 pub fn write_skillbase_json(project_path: String, content: String) -> Result<(), String> {
     let path = std::path::Path::new(&project_path).join("skillbase.json");
     std::fs::write(&path, &content).map_err(|e| format!("Write skillbase.json: {}", e))
+}
+
+/// Scan another agent's skill directory and compare with the active agent's directory
+#[tauri::command]
+pub fn scan_agent_skills(
+    state: State<'_, AppState>,
+    agent_id: String,
+    scope: String,
+    project_path: Option<String>,
+) -> Result<ScanAgentSkillsResult, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+    let active_id = config.active_agent_id.clone();
+
+    if agent_id == active_id {
+        return Err("Cannot migrate from the active agent to itself".to_string());
+    }
+
+    // Resolve source directory for the specified agent
+    let source_dir = if scope == "project" {
+        let pp = project_path.as_ref().ok_or("project_path is required for project scope")?;
+        let pattern = config.agent_project_patterns.get(&agent_id).cloned().unwrap_or_default();
+        pattern.replace("{project}", pp)
+    } else {
+        config.agent_global_paths.get(&agent_id).cloned().unwrap_or_default()
+    };
+
+    if source_dir.is_empty() {
+        return Err(format!("No path configured for agent '{}'", agent_id));
+    }
+
+    // Resolve target directory for the active agent
+    let target_dir = if scope == "project" {
+        let pp = project_path.as_ref().ok_or("project_path is required for project scope")?;
+        config.active_project_dir(pp)
+    } else {
+        config.active_global_path()
+    };
+
+    let display_name = config.agent_display_name(&agent_id);
+    drop(config);
+
+    let mut result = skill_service::scan_agent_skills_dir(&source_dir, &target_dir)?;
+    result.agent_id = agent_id;
+    result.agent_display_name = display_name;
+    Ok(result)
+}
+
+/// Migrate selected skills from another agent to the active agent
+#[tauri::command]
+pub fn migrate_skills(
+    state: State<'_, AppState>,
+    source_agent_id: String,
+    skill_names: Vec<String>,
+    scope: String,
+    project_path: Option<String>,
+    conflict_map: std::collections::HashMap<String, ConflictResolution>,
+) -> Result<MigrateResult, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+
+    // Resolve source directory
+    let source_dir = if scope == "project" {
+        let pp = project_path.as_ref().ok_or("project_path is required for project scope")?;
+        let pattern = config.agent_project_patterns.get(&source_agent_id).cloned().unwrap_or_default();
+        pattern.replace("{project}", pp)
+    } else {
+        config.agent_global_paths.get(&source_agent_id).cloned().unwrap_or_default()
+    };
+
+    if source_dir.is_empty() {
+        return Err(format!("No path configured for agent '{}'", source_agent_id));
+    }
+
+    // Resolve target directory
+    let target_dir = if scope == "project" {
+        let pp = project_path.as_ref().ok_or("project_path is required for project scope")?;
+        config.active_project_dir(pp)
+    } else {
+        config.active_global_path()
+    };
+
+    drop(config);
+
+    let result = skill_service::migrate_skills_to_dir(&source_dir, &target_dir, &skill_names, &conflict_map)?;
+
+    // Record history for each migrated skill
+    for name in &result.migrated {
+        let _ = history_service::record_operation(
+            OperationType::Install,
+            name,
+            &target_dir,
+            Some(&format!("migrate:{}", source_agent_id)),
+            None,
+            None,
+            false,
+        );
+    }
+
+    Ok(result)
+}
+
+/// Get file-level diff between a source agent's skill and the active agent's skill
+#[tauri::command]
+pub fn get_migrate_skill_diff(
+    state: State<'_, AppState>,
+    source_agent_id: String,
+    skill_name: String,
+    scope: String,
+    project_path: Option<String>,
+) -> Result<SkillDiff, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+
+    // Resolve source base directory
+    let source_base = if scope == "project" {
+        let pp = project_path.as_ref().ok_or("project_path is required for project scope")?;
+        let pattern = config.agent_project_patterns.get(&source_agent_id).cloned().unwrap_or_default();
+        pattern.replace("{project}", pp)
+    } else {
+        config.agent_global_paths.get(&source_agent_id).cloned().unwrap_or_default()
+    };
+
+    if source_base.is_empty() {
+        return Err(format!("No path configured for agent '{}'", source_agent_id));
+    }
+
+    // Resolve target base directory
+    let target_base = if scope == "project" {
+        let pp = project_path.as_ref().ok_or("project_path is required for project scope")?;
+        config.active_project_dir(pp)
+    } else {
+        config.active_global_path()
+    };
+
+    drop(config);
+
+    let source_dir = std::path::Path::new(&source_base).join(&skill_name);
+    let target_dir = std::path::Path::new(&target_base).join(&skill_name);
+
+    skill_service::build_skill_diff(&target_dir, &source_dir)
+}
+
+/// Read file content from both source and target agent directories for migration diff
+#[tauri::command]
+pub fn get_migrate_diff_content(
+    state: State<'_, AppState>,
+    source_agent_id: String,
+    skill_name: String,
+    file_path: String,
+    scope: String,
+    project_path: Option<String>,
+) -> Result<crate::commands::version::DiffFileContent, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+
+    let source_base = if scope == "project" {
+        let pp = project_path.as_ref().ok_or("project_path is required for project scope")?;
+        let pattern = config.agent_project_patterns.get(&source_agent_id).cloned().unwrap_or_default();
+        pattern.replace("{project}", pp)
+    } else {
+        config.agent_global_paths.get(&source_agent_id).cloned().unwrap_or_default()
+    };
+
+    let target_base = if scope == "project" {
+        let pp = project_path.as_ref().ok_or("project_path is required for project scope")?;
+        config.active_project_dir(pp)
+    } else {
+        config.active_global_path()
+    };
+
+    drop(config);
+
+    let source_file = std::path::Path::new(&source_base).join(&skill_name).join(&file_path);
+    let target_file = std::path::Path::new(&target_base).join(&skill_name).join(&file_path);
+
+    let local_content = if target_file.exists() {
+        Some(std::fs::read_to_string(&target_file).map_err(|e| format!("Read target file: {}", e))?)
+    } else {
+        None
+    };
+
+    let remote_content = if source_file.exists() {
+        Some(std::fs::read_to_string(&source_file).map_err(|e| format!("Read source file: {}", e))?)
+    } else {
+        None
+    };
+
+    Ok(crate::commands::version::DiffFileContent {
+        local_content,
+        remote_content,
+    })
 }

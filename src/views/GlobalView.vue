@@ -7,6 +7,7 @@ import SkillCompareTable from '@/components/common/SkillCompareTable.vue'
 import SkillPreviewModal from '@/components/common/SkillPreviewModal.vue'
 import SkillDiffViewer from '@/components/common/SkillDiffViewer.vue'
 import OperationHistoryPanel from '@/components/common/OperationHistoryPanel.vue'
+import MigrateDialog from '@/components/common/MigrateDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import type { SkillComparison } from '@/types'
 import { useI18n } from 'vue-i18n'
@@ -235,6 +236,7 @@ onUnmounted(() => {
               {{ t('global.updateAll', { count: stats.outdated }) }}
             </NButton>
             <NButton @click="showHistory = true">{{ t('history.title') }}</NButton>
+            <NButton @click="skillStore.openMigrateDialog('global')">{{ t('migration.title') }}</NButton>
           </NSpace>
           <NSpace class="filters">
             <NInput ref="searchInputRef" v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
@@ -286,6 +288,8 @@ onUnmounted(() => {
       v-if="showHistory"
       @close="showHistory = false"
     />
+
+    <MigrateDialog />
   </div>
 </template>
 

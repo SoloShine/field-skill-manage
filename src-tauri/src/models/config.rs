@@ -51,7 +51,7 @@ impl AgentType {
     pub fn default_global_dir(&self, home: &str) -> String {
         match self {
             AgentType::Claude => format!("{}/.claude/skills", home),
-            AgentType::OpenCode => format!("{}/.opencode/skills", home),
+            AgentType::OpenCode => format!("{}/.config/opencode/skills", home),
             AgentType::Codex => format!("{}/.codex/skills", home),
             AgentType::Cursor => format!("{}/.cursor/skills", home),
             AgentType::Windsurf => format!("{}/.windsurf/skills", home),
