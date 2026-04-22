@@ -193,3 +193,29 @@ export interface ProjectDetailData {
   comparisons: SkillComparison[]
   skillbase: SkillbaseResolution | null
 }
+
+// Migration types
+export type MigrateConflictStatus = 'NewTarget' | 'SameContent' | 'DifferentVersion' | 'ContentDiffers'
+
+export interface MigrateSkillEntry {
+  name: string
+  version: string
+  description: string
+  path: string
+  conflictStatus: MigrateConflictStatus
+}
+
+export interface ScanAgentSkillsResult {
+  agentId: string
+  agentDisplayName: string
+  sourceDir: string
+  skills: MigrateSkillEntry[]
+}
+
+export type ConflictResolution = 'Skip' | 'Overwrite'
+
+export interface MigrateResult {
+  migrated: string[]
+  skipped: string[]
+  failed: [string, string][]
+}
