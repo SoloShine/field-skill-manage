@@ -10,6 +10,7 @@ import SkillPreviewModal from '@/components/common/SkillPreviewModal.vue'
 import SkillbasePanel from '@/components/common/SkillbasePanel.vue'
 import SkillDiffViewer from '@/components/common/SkillDiffViewer.vue'
 import OperationHistoryPanel from '@/components/common/OperationHistoryPanel.vue'
+import MigrateDialog from '@/components/common/MigrateDialog.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import type { SkillComparison } from '@/types'
 import { useI18n } from 'vue-i18n'
@@ -266,6 +267,7 @@ onUnmounted(() => {
           <div class="toolbar-left">
             <NButton :loading="skillStore.syncing" @click="handleSync">{{ t('common.syncRemote') }}</NButton>
             <NButton @click="showHistory = true">{{ t('history.title') }}</NButton>
+            <NButton @click="skillStore.openMigrateDialog('project', projectStore.projectPath ?? undefined)">{{ t('migration.title') }}</NButton>
           </div>
           <NInput ref="searchInputRef" v-model:value="searchText" :placeholder="t('common.search')" clearable style="width: 160px" />
         </div>
@@ -330,6 +332,8 @@ onUnmounted(() => {
       v-if="showHistory"
       @close="showHistory = false"
     />
+
+    <MigrateDialog />
 
     <NModal v-model:show="showGenerateModal" preset="dialog" :title="t('skillbase.generateTitle')" :positive-text="t('skillbase.save')" :negative-text="t('skillbase.cancel')" @positive-click="handleSaveSkillbase">
       <NInput type="textarea" v-model:value="generatedContent" :rows="12" style="font-family: var(--font-mono); font-size: 12px" />
