@@ -202,13 +202,13 @@ export interface MigrateSkillEntry {
   version: string
   description: string
   path: string
-  conflictStatus: MigrateConflictStatus
+  conflict_status: MigrateConflictStatus
 }
 
 export interface ScanAgentSkillsResult {
-  agentId: string
-  agentDisplayName: string
-  sourceDir: string
+  agent_id: string
+  agent_display_name: string
+  source_dir: string
   skills: MigrateSkillEntry[]
 }
 

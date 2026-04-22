@@ -51,12 +51,12 @@ const agentOptions = computed(() =>
 const skills = computed(() => skillStore.scanResult?.skills ?? [])
 
 const newSkills = computed(() =>
-  skills.value.filter(s => s.conflictStatus === 'NewTarget' && selectedSkills.value.has(s.name))
+  skills.value.filter(s => s.conflict_status === 'NewTarget' && selectedSkills.value.has(s.name))
 )
 
 const conflictSkills = computed(() =>
   skills.value.filter(
-    s => (s.conflictStatus === 'DifferentVersion' || s.conflictStatus === 'ContentDiffers')
+    s => (s.conflict_status === 'DifferentVersion' || s.conflict_status === 'ContentDiffers')
       && selectedSkills.value.has(s.name)
   )
 )
@@ -95,14 +95,14 @@ watch(selectedAgentId, async (newId) => {
     await skillStore.scanAgentSkills(newId)
     const selected = new Set<string>()
     for (const s of skills.value) {
-      if (s.conflictStatus !== 'SameContent') {
+      if (s.conflict_status !== 'SameContent') {
         selected.add(s.name)
       }
     }
     selectedSkills.value = selected
     const resolutions: Record<string, ConflictResolution> = {}
     for (const s of skills.value) {
-      if (s.conflictStatus === 'DifferentVersion' || s.conflictStatus === 'ContentDiffers') {
+      if (s.conflict_status === 'DifferentVersion' || s.conflict_status === 'ContentDiffers') {
         resolutions[s.name] = 'Skip'
       }
     }
@@ -237,7 +237,7 @@ function statusBadgeText(status: string) {
 
     <div v-if="currentStep === 2" class="step-content">
       <div v-if="skillStore.scanResult" class="scan-info">
-        <span>{{ t('migration.sourcePath') }}: {{ skillStore.scanResult.sourceDir }}</span>
+        <span>{{ t('migration.sourcePath') }}: {{ skillStore.scanResult.source_dir }}</span>
       </div>
       <div v-if="skills.length === 0" class="empty-hint">
         {{ t('migration.noSkillsFound') }}
@@ -257,7 +257,7 @@ function statusBadgeText(status: string) {
           v-for="skill in skills"
           :key="skill.name"
           class="skill-row"
-          :class="{ 'same-content': skill.conflictStatus === 'SameContent' }"
+          :class="{ 'same-content': skill.conflict_status === 'SameContent' }"
         >
           <NCheckbox
             :checked="selectedSkills.has(skill.name)"
@@ -268,8 +268,8 @@ function statusBadgeText(status: string) {
             <span v-if="skill.version" class="skill-version">v{{ skill.version }}</span>
             <span v-if="skill.description" class="skill-desc">{{ skill.description }}</span>
           </div>
-          <span class="status-badge" :class="statusBadgeClass(skill.conflictStatus)">
-            {{ statusBadgeText(skill.conflictStatus) }}
+          <span class="status-badge" :class="statusBadgeClass(skill.conflict_status)">
+            {{ statusBadgeText(skill.conflict_status) }}
           </span>
         </div>
       </div>
@@ -300,8 +300,8 @@ function statusBadgeText(status: string) {
         <div v-for="skill in conflictSkills" :key="skill.name" class="confirm-row conflict-row">
           <div class="conflict-info">
             <span class="skill-name">{{ skill.name }}</span>
-            <span class="status-badge" :class="statusBadgeClass(skill.conflictStatus)">
-              {{ statusBadgeText(skill.conflictStatus) }}
+            <span class="status-badge" :class="statusBadgeClass(skill.conflict_status)">
+              {{ statusBadgeText(skill.conflict_status) }}
             </span>
             <NButton text size="tiny" type="info" @click="showDiff(skill.name)">
               {{ t('migration.diff') }}
