@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { NModal, NButton, NSelect, NCheckbox, NSpin, NRadioGroup, NRadio, NDivider, useMessage } from 'naive-ui'
+import { NModal, NButton, NSelect, NCheckbox, NRadioGroup, NRadio, NDivider, useMessage } from 'naive-ui'
 import { useSkillStore } from '@/stores/skill'
 import { useConfigStore } from '@/stores/config'
 import SkillDiffViewer from '@/components/common/SkillDiffViewer.vue'
@@ -203,6 +203,7 @@ function statusBadgeText(status: string) {
     :title="t('migration.title')"
     style="width: 640px; max-width: 90vw;"
     @update:show="(v: boolean) => { if (!v) skillStore.closeMigrateDialog() }"
+    @close="skillStore.closeMigrateDialog()"
   >
     <div class="step-indicator">
       <div class="step" :class="{ active: currentStep >= 1, current: currentStep === 1 }">
@@ -322,18 +323,12 @@ function statusBadgeText(status: string) {
         </div>
       </div>
 
-      <NModal
-        :show="!!diffSkillName"
-        preset="card"
-        :title="diffSkillName ? `${t('diff.title')} - ${diffSkillName}` : ''"
-        style="width: 80vw; max-width: 900px;"
-        @update:show="(v: boolean) => { if (!v) diffSkillName = null }"
-      >
-        <NSpin :show="diffLoading">
-          <SkillDiffViewer v-if="diffData" :diff="diffData" target="migration" />
-          <div v-else-if="!diffLoading" class="empty-hint">{{ t('diff.noContent') }}</div>
-        </NSpin>
-      </NModal>
+      <SkillDiffViewer
+        v-if="diffSkillName && diffData"
+        :diff="diffData"
+        target="migration"
+        @close="diffSkillName = null; diffData = null"
+      />
 
       <NDivider />
       <div class="summary-bar">
