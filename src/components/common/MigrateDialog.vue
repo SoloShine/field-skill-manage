@@ -41,6 +41,7 @@ const sourceAgents = computed(() => {
     }
   }
 
+  result.sort((a, b) => a.label.localeCompare(b.label))
   return result
 })
 
