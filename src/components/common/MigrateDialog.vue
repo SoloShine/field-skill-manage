@@ -233,6 +233,11 @@ function statusBadgeText(status: string) {
       <div v-if="agentOptions.length === 0" class="empty-hint">
         {{ t('migration.noAgentsAvailable') }}
       </div>
+      <div v-if="skills.length > 0" class="step-actions">
+        <NButton type="primary" @click="currentStep = 2">
+          {{ t('migration.next') }} ({{ skills.length }})
+        </NButton>
+      </div>
     </div>
 
     <div v-if="currentStep === 2" class="step-content">
