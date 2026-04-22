@@ -82,8 +82,8 @@ async function handleFileClick(row: FileDiff) {
 }
 
 function computeDiffLines(result: DiffFileContent) {
-  const local = result.local_content ?? ''
-  const remote = result.remote_content ?? ''
+  const local = result.localContent ?? ''
+  const remote = result.remoteContent ?? ''
   const changes = Diff.diffLines(local, remote)
 
   const lines: DiffLine[] = []

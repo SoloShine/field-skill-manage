@@ -7,7 +7,7 @@ use crate::services::hash_service;
 use std::path::Path;
 
 /// Content pair for a single file in a diff
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiffFileContent {
     pub local_content: Option<String>,

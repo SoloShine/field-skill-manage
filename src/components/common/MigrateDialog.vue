@@ -176,7 +176,7 @@ async function showDiff(skillName: string) {
 
 async function loadDiffFileContent(filePath: string) {
   if (!selectedAgentId.value || !diffSkillName.value) {
-    return { local_content: undefined, remote_content: undefined } as import('@/types').DiffFileContent
+    return { localContent: undefined, remoteContent: undefined } as import('@/types').DiffFileContent
   }
   return skillStore.loadMigrateDiffContent(selectedAgentId.value, diffSkillName.value, filePath)
 }

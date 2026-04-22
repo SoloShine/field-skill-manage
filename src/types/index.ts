@@ -134,8 +134,8 @@ export interface SkillDiff {
 }
 
 export interface DiffFileContent {
-  local_content?: string
-  remote_content?: string
+  localContent?: string
+  remoteContent?: string
 }
 
 // Operation History types
