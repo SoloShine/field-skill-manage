@@ -508,10 +508,6 @@ pub fn get_migrate_skill_diff(
     let source_dir = std::path::Path::new(&source_base).join(&skill_name);
     let target_dir = std::path::Path::new(&target_base).join(&skill_name);
 
-    eprintln!("[migrate_diff] source_dir={}", source_dir.display());
-    eprintln!("[migrate_diff] target_dir={}", target_dir.display());
-    eprintln!("[migrate_diff] source_exists={}, target_exists={}", source_dir.exists(), target_dir.exists());
-
     skill_service::build_skill_diff(&target_dir, &source_dir)
 }
 
