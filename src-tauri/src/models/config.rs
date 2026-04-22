@@ -161,10 +161,12 @@ impl AppConfig {
     /// to correct path (~/.config/opencode/skills)
     pub fn migrate_opencode_path(&mut self) {
         let home = dirs_home();
-        let old_path = format!("{}/.opencode/skills", home);
         let new_path = AgentType::OpenCode.default_global_dir(&home);
         if let Some(path) = self.agent_global_paths.get_mut("opencode") {
-            if *path == old_path {
+            // Match old default regardless of path separator style
+            let normalized = path.replace('\\', "/");
+            let old_suffix = "/.opencode/skills";
+            if normalized.ends_with(old_suffix) && !normalized.contains("/.config/opencode") {
                 *path = new_path;
             }
         }
