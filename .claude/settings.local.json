@@ -7,7 +7,9 @@
       "Bash(where rustup:*)",
       "Bash(curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs)",
       "Bash(sh -s -- -y)",
-      "Bash(export PATH=\"$HOME/.cargo/bin:$PATH\")"
+      "Bash(export PATH=\"$HOME/.cargo/bin:$PATH\")",
+      "Bash(mempalace status *)",
+      "Bash(python -c \"import chromadb; client = chromadb.PersistentClient\\(path='C:/Users/Administrator/.mempalace/palace'\\); print\\('Collections:', client.list_collections\\(\\)\\)\")"
     ]
   }
 }
