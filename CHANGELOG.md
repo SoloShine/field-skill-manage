@@ -4,6 +4,72 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.3.0] - 2026-04-23
+
+### ✨ Highlights
+
+**Local Skill Migration** — Migrate skills between agents with a 3-step wizard. Scan source agent's installed skills, preview file-level diffs against the target, then one-click migrate. Supports both global and project-level skill directories.
+
+### 🚀 Features
+
+- **3-Step Migration Wizard** — Scan → Diff Preview → Migrate, with clear progress indicators and step navigation
+- **Cross-Agent Migration** — Move skills between any supported agent (Claude Code, OpenCode, Codex, Cursor, Windsurf)
+- **Diff Preview** — File-level diff comparison before migration, showing exactly what will be added or changed
+- **Migration IPC Commands** — Three new Tauri commands: `scan_source_agent`, `get_migration_diff`, `migrate_skills`
+- **Migration Service** — Rust backend scan and migrate functions with dedicated diff content loading
+- **Migration Types** — Shared TypeScript interfaces and Rust structs for migration state and data flow
+- **Store Integration** — Migration state management in Pinia skill store with async actions
+- **i18n Support** — Full Chinese and English translations for migration UI
+- **Entry Points** — Migrate buttons wired into both GlobalView and ProjectDetailView
+
+### 🐛 Bug Fixes
+
+- Fixed snake_case/camelCase field name mismatch between Rust and TypeScript migration types
+- Fixed diff viewer modal close issue by removing nested NModal
+- Fixed diff argument order so source agent shows as new version
+- Fixed Step 1 Next button not showing when scan data already exists
+- Reset migration dialog state on open to prevent stale UI
+- Corrected OpenCode global skill path to `~/.config/opencode/skills`
+- Auto-migrate OpenCode global path from old default
+- Use suffix matching for OpenCode path migration
+- Added `serde rename_all camelCase` to `DiffFileContent`
+- Sort source agent list alphabetically in migration dialog
+
+---
+
+## [1.3.0] - 2026-04-23 (中文版)
+
+### ✨ 亮点
+
+**本地 Skill 迁移** — 通过 3 步向导在 Agent 之间迁移 Skill。扫描源 Agent 已安装的 Skill，预览文件级差异对比，一键迁移。支持全局和项目级 Skill 目录。
+
+### 🚀 新功能
+
+- **3 步迁移向导** — 扫描 → 差异预览 → 迁移，清晰的进度指示和步骤导航
+- **跨 Agent 迁移** — 在任意支持的 Agent（Claude Code、OpenCode、Codex、Cursor、Windsurf）之间迁移 Skill
+- **差异预览** — 迁移前文件级 diff 对比，清楚展示将要新增或变更的内容
+- **迁移 IPC 命令** — 三个新 Tauri 命令：`scan_source_agent`、`get_migration_diff`、`migrate_skills`
+- **迁移服务** — Rust 后端扫描和迁移函数，含专用 diff 内容加载
+- **迁移类型** — TypeScript 接口和 Rust 结构体，覆盖迁移状态和数据流
+- **Store 集成** — Pinia skill store 中的迁移状态管理及异步操作
+- **国际化** — 迁移 UI 完整中英文翻译
+- **入口点** — 全局视图和项目详情视图均接入迁移按钮
+
+### 🐛 问题修复
+
+- 修复 Rust/TypeScript 迁移类型间的 snake_case/camelCase 字段名不匹配
+- 修复 diff 查看器弹窗关闭问题（移除嵌套 NModal）
+- 修复 diff 参数顺序，使源 Agent 显示为新版本
+- 修复扫描数据已存在时步骤 1 的"下一步"按钮不显示
+- 打开迁移弹窗时重置状态，防止残留 UI
+- 修正 OpenCode 全局 Skill 路径为 `~/.config/opencode/skills`
+- 自动迁移旧版 OpenCode 全局路径
+- OpenCode 路径迁移使用后缀匹配
+- 为 `DiffFileContent` 添加 `serde rename_all camelCase`
+- 迁移弹窗中源 Agent 列表按字母排序
+
+---
+
 ## [1.2.0] - 2026-04-21
 
 ### ✨ Highlights
