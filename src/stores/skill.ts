@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import type { SkillComparison, ProjectSkillSummary, SyncResult, SkillDiff, OperationRecord, SkillbaseResolution, ProjectDetailData } from '@/types'
+import type { SkillComparison, ProjectSkillSummary, SyncResult, SkillDiff, OperationRecord, SkillbaseResolution, ProjectDetailData, ScanAgentSkillsResult, MigrateResult, ConflictResolution } from '@/types'
 
 export const useSkillStore = defineStore('skill', () => {
   const globalComparisons = ref<SkillComparison[]>([])
@@ -13,6 +13,12 @@ export const useSkillStore = defineStore('skill', () => {
   const skillDiff = ref<SkillDiff | null>(null)
   const skillbaseResolution = ref<SkillbaseResolution | null>(null)
   const skillbaseSyncing = ref(false)
+
+  const migrateDialogVisible = ref(false)
+  const migrateScope = ref<'global' | 'project'>('global')
+  const migrateProjectPath = ref<string | null>(null)
+  const scanResult = ref<ScanAgentSkillsResult | null>(null)
+  const migrating = ref(false)
 
   async function syncRemote() {
     syncing.value = true
@@ -126,6 +132,63 @@ export const useSkillStore = defineStore('skill', () => {
     await invoke('write_skillbase_json', { projectPath, content })
   }
 
+  function openMigrateDialog(scope: 'global' | 'project', projectPath?: string) {
+    migrateScope.value = scope
+    migrateProjectPath.value = projectPath ?? null
+    scanResult.value = null
+    migrateDialogVisible.value = true
+  }
+
+  function closeMigrateDialog() {
+    migrateDialogVisible.value = false
+    scanResult.value = null
+  }
+
+  async function scanAgentSkills(agentId: string) {
+    const args: Record<string, unknown> = {
+      agentId,
+      scope: migrateScope.value,
+    }
+    if (migrateScope.value === 'project' && migrateProjectPath.value) {
+      args.projectPath = migrateProjectPath.value
+    }
+    scanResult.value = await invoke<ScanAgentSkillsResult>('scan_agent_skills', args)
+  }
+
+  async function migrateSkillsAction(
+    sourceAgentId: string,
+    skillNames: string[],
+    conflictMap: Record<string, ConflictResolution>,
+  ) {
+    migrating.value = true
+    try {
+      const args: Record<string, unknown> = {
+        sourceAgentId,
+        skillNames,
+        scope: migrateScope.value,
+        conflictMap,
+      }
+      if (migrateScope.value === 'project' && migrateProjectPath.value) {
+        args.projectPath = migrateProjectPath.value
+      }
+      return await invoke<MigrateResult>('migrate_skills', args)
+    } finally {
+      migrating.value = false
+    }
+  }
+
+  async function loadMigrateSkillDiff(sourceAgentId: string, skillName: string) {
+    const args: Record<string, unknown> = {
+      sourceAgentId,
+      skillName,
+      scope: migrateScope.value,
+    }
+    if (migrateScope.value === 'project' && migrateProjectPath.value) {
+      args.projectPath = migrateProjectPath.value
+    }
+    return await invoke<SkillDiff>('get_migrate_skill_diff', args)
+  }
+
   return {
     globalComparisons,
     projectComparisons,
@@ -153,5 +216,15 @@ export const useSkillStore = defineStore('skill', () => {
     syncSkillbase,
     generateSkillbase,
     writeSkillbase,
+    migrateDialogVisible,
+    migrateScope,
+    migrateProjectPath,
+    scanResult,
+    migrating,
+    openMigrateDialog,
+    closeMigrateDialog,
+    scanAgentSkills,
+    migrateSkillsAction,
+    loadMigrateSkillDiff,
   }
 })
