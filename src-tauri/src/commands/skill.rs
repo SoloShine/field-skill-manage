@@ -508,5 +508,5 @@ pub fn get_migrate_skill_diff(
     let source_dir = std::path::Path::new(&source_base).join(&skill_name);
     let target_dir = std::path::Path::new(&target_base).join(&skill_name);
 
-    skill_service::build_skill_diff(&source_dir, &target_dir)
+    skill_service::build_skill_diff(&target_dir, &source_dir)
 }
