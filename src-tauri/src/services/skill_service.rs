@@ -1,9 +1,10 @@
 use std::path::Path;
 
 use crate::models::skill::{
-    DependencyEntry, DependencyStatus, FileDiff, FileDiffStatus, InstallStatus, SkillDiff,
-    SkillManifestEntry, SkillMeta, SkillbaseManifest, SkillbaseResolution, SkillsManifest,
-    ProjectDetailData,
+    ConflictResolution, DependencyEntry, DependencyStatus, FileDiff, FileDiffStatus,
+    InstallStatus, MigrateConflictStatus, MigrateResult, MigrateSkillEntry, ScanAgentSkillsResult,
+    SkillDiff, SkillManifestEntry, SkillMeta, SkillbaseManifest, SkillbaseResolution,
+    SkillsManifest, ProjectDetailData,
 };
 
 use crate::models::config::RepoConfig;
@@ -1011,5 +1012,182 @@ pub fn build_skill_diff(
         removed_count,
         modified_count,
         unchanged_count,
+    })
+}
+
+/// Scan a source agent's skill directory for skills containing SKILL.md.
+/// Compares each found skill against the target directory to determine conflict status.
+pub fn scan_agent_skills_dir(
+    source_dir: &str,
+    target_dir: &str,
+) -> Result<ScanAgentSkillsResult, String> {
+    let source_path = Path::new(source_dir);
+    if !source_path.exists() {
+        return Err(format!("Source directory does not exist: {}", source_dir));
+    }
+    if !source_path.is_dir() {
+        return Err(format!("Source path is not a directory: {}", source_dir));
+    }
+
+    let mut skills = Vec::new();
+
+    let entries = std::fs::read_dir(source_path)
+        .map_err(|e| format!("Read source dir '{}': {}", source_dir, e))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Dir entry: {}", e))?;
+        let sub_dir = entry.path();
+
+        // Only process directories
+        if !sub_dir.is_dir() {
+            continue;
+        }
+
+        // Skip hidden directories (starting with '.')
+        let dir_name = entry.file_name().to_string_lossy().to_string();
+        if dir_name.starts_with('.') {
+            continue;
+        }
+
+        // Check if SKILL.md exists
+        let skill_md = sub_dir.join("SKILL.md");
+        if !skill_md.exists() {
+            continue;
+        }
+
+        // Parse frontmatter for metadata
+        let fm = parse_skill_frontmatter(&sub_dir.to_string_lossy()).ok();
+        let name = fm
+            .as_ref()
+            .map(|f| f.name.clone())
+            .filter(|n| !n.is_empty())
+            .unwrap_or_else(|| dir_name.clone());
+        let version = fm
+            .as_ref()
+            .map(|f| f.version.clone())
+            .unwrap_or_default();
+        let description = fm
+            .as_ref()
+            .map(|f| f.description.clone())
+            .unwrap_or_default();
+
+        // Determine conflict status against target directory
+        let target_skill_dir = Path::new(target_dir).join(&name);
+
+        let conflict_status = if !target_skill_dir.exists() {
+            MigrateConflictStatus::NewTarget
+        } else {
+            // Both exist — compute aggregate SHA256 for both
+            let source_hash = crate::services::hash_service::aggregate_sha256(&sub_dir).ok();
+            let target_hash = crate::services::hash_service::aggregate_sha256(&target_skill_dir).ok();
+
+            let hashes_match = match (&source_hash, &target_hash) {
+                (Some(sh), Some(th)) => sh.value == th.value,
+                _ => false,
+            };
+
+            if hashes_match {
+                MigrateConflictStatus::SameContent
+            } else {
+                // Check if both have version strings that differ
+                let target_fm = parse_skill_frontmatter(&target_skill_dir.to_string_lossy()).ok();
+                let source_version = version.as_str();
+                let target_version = target_fm
+                    .as_ref()
+                    .map(|f| f.version.as_str())
+                    .unwrap_or("");
+
+                if !source_version.is_empty()
+                    && !target_version.is_empty()
+                    && source_version != target_version
+                {
+                    MigrateConflictStatus::DifferentVersion
+                } else {
+                    MigrateConflictStatus::ContentDiffers
+                }
+            }
+        };
+
+        skills.push(MigrateSkillEntry {
+            name,
+            version,
+            description,
+            path: sub_dir.to_string_lossy().to_string(),
+            conflict_status,
+        });
+    }
+
+    Ok(ScanAgentSkillsResult {
+        agent_id: String::new(),
+        agent_display_name: String::new(),
+        source_dir: source_dir.to_string(),
+        skills,
+    })
+}
+
+/// Copy selected skills from source to target directory with conflict resolution.
+pub fn migrate_skills_to_dir(
+    source_dir: &str,
+    target_dir: &str,
+    skill_names: &[String],
+    conflict_map: &std::collections::HashMap<String, ConflictResolution>,
+) -> Result<MigrateResult, String> {
+    let target_path = Path::new(target_dir);
+
+    // Create target directory if it doesn't exist
+    if !target_path.exists() {
+        std::fs::create_dir_all(target_path)
+            .map_err(|e| format!("Create target dir '{}': {}", target_dir, e))?;
+    }
+
+    let mut migrated: Vec<String> = Vec::new();
+    let mut skipped: Vec<String> = Vec::new();
+    let mut failed: Vec<(String, String)> = Vec::new();
+
+    for skill_name in skill_names {
+        let src_skill = Path::new(source_dir).join(skill_name);
+        let dst_skill = target_path.join(skill_name);
+
+        // Check source exists
+        if !src_skill.exists() {
+            failed.push((
+                skill_name.clone(),
+                format!("Source skill not found: {}", src_skill.display()),
+            ));
+            continue;
+        }
+
+        if dst_skill.exists() {
+            // Target exists — check conflict resolution
+            match conflict_map.get(skill_name) {
+                Some(ConflictResolution::Overwrite) => {
+                    // Remove existing target, then copy
+                    std::fs::remove_dir_all(&dst_skill)
+                        .map_err(|e| format!("Remove existing '{}': {}", dst_skill.display(), e))?;
+                    if let Err(e) = copy_dir_recursive(&src_skill, &dst_skill) {
+                        failed.push((skill_name.clone(), e));
+                    } else {
+                        migrated.push(skill_name.clone());
+                    }
+                }
+                _ => {
+                    // No entry or Skip
+                    skipped.push(skill_name.clone());
+                }
+            }
+        } else {
+            // Target doesn't exist — copy directly
+            if let Err(e) = copy_dir_recursive(&src_skill, &dst_skill) {
+                failed.push((skill_name.clone(), e));
+            } else {
+                migrated.push(skill_name.clone());
+            }
+        }
+    }
+
+    Ok(MigrateResult {
+        migrated,
+        skipped,
+        failed,
     })
 }
