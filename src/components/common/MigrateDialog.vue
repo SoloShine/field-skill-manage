@@ -174,6 +174,13 @@ async function showDiff(skillName: string) {
   }
 }
 
+async function loadDiffFileContent(filePath: string) {
+  if (!selectedAgentId.value || !diffSkillName.value) {
+    return { local_content: undefined, remote_content: undefined } as import('@/types').DiffFileContent
+  }
+  return skillStore.loadMigrateDiffContent(selectedAgentId.value, diffSkillName.value, filePath)
+}
+
 function statusBadgeClass(status: string) {
   switch (status) {
     case 'NewTarget': return 'badge-new'
@@ -327,6 +334,7 @@ function statusBadgeText(status: string) {
         v-if="diffSkillName && diffData"
         :diff="diffData"
         target="migration"
+        :load-file-content="loadDiffFileContent"
         @close="diffSkillName = null; diffData = null"
       />
 

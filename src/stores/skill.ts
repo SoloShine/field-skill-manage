@@ -189,6 +189,19 @@ export const useSkillStore = defineStore('skill', () => {
     return await invoke<SkillDiff>('get_migrate_skill_diff', args)
   }
 
+  async function loadMigrateDiffContent(sourceAgentId: string, skillName: string, filePath: string) {
+    const args: Record<string, unknown> = {
+      sourceAgentId,
+      skillName,
+      filePath,
+      scope: migrateScope.value,
+    }
+    if (migrateScope.value === 'project' && migrateProjectPath.value) {
+      args.projectPath = migrateProjectPath.value
+    }
+    return await invoke<import('@/types').DiffFileContent>('get_migrate_diff_content', args)
+  }
+
   return {
     globalComparisons,
     projectComparisons,
@@ -226,5 +239,6 @@ export const useSkillStore = defineStore('skill', () => {
     scanAgentSkills,
     migrateSkillsAction,
     loadMigrateSkillDiff,
+    loadMigrateDiffContent,
   }
 })

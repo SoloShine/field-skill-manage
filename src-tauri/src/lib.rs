@@ -63,6 +63,7 @@ pub fn run() {
             skill::scan_agent_skills,
             skill::migrate_skills,
             skill::get_migrate_skill_diff,
+            skill::get_migrate_diff_content,
             // Version
             version::calculate_skill_hash,
             version::compare_skill_versions,

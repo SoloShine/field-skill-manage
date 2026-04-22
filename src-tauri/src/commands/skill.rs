@@ -508,5 +508,59 @@ pub fn get_migrate_skill_diff(
     let source_dir = std::path::Path::new(&source_base).join(&skill_name);
     let target_dir = std::path::Path::new(&target_base).join(&skill_name);
 
+    eprintln!("[migrate_diff] source_dir={}", source_dir.display());
+    eprintln!("[migrate_diff] target_dir={}", target_dir.display());
+    eprintln!("[migrate_diff] source_exists={}, target_exists={}", source_dir.exists(), target_dir.exists());
+
     skill_service::build_skill_diff(&target_dir, &source_dir)
+}
+
+/// Read file content from both source and target agent directories for migration diff
+#[tauri::command]
+pub fn get_migrate_diff_content(
+    state: State<'_, AppState>,
+    source_agent_id: String,
+    skill_name: String,
+    file_path: String,
+    scope: String,
+    project_path: Option<String>,
+) -> Result<crate::commands::version::DiffFileContent, String> {
+    let config = state.config.lock().map_err(|e| e.to_string())?;
+
+    let source_base = if scope == "project" {
+        let pp = project_path.as_ref().ok_or("project_path is required for project scope")?;
+        let pattern = config.agent_project_patterns.get(&source_agent_id).cloned().unwrap_or_default();
+        pattern.replace("{project}", pp)
+    } else {
+        config.agent_global_paths.get(&source_agent_id).cloned().unwrap_or_default()
+    };
+
+    let target_base = if scope == "project" {
+        let pp = project_path.as_ref().ok_or("project_path is required for project scope")?;
+        config.active_project_dir(pp)
+    } else {
+        config.active_global_path()
+    };
+
+    drop(config);
+
+    let source_file = std::path::Path::new(&source_base).join(&skill_name).join(&file_path);
+    let target_file = std::path::Path::new(&target_base).join(&skill_name).join(&file_path);
+
+    let local_content = if target_file.exists() {
+        Some(std::fs::read_to_string(&target_file).map_err(|e| format!("Read target file: {}", e))?)
+    } else {
+        None
+    };
+
+    let remote_content = if source_file.exists() {
+        Some(std::fs::read_to_string(&source_file).map_err(|e| format!("Read source file: {}", e))?)
+    } else {
+        None
+    };
+
+    Ok(crate::commands::version::DiffFileContent {
+        local_content,
+        remote_content,
+    })
 }

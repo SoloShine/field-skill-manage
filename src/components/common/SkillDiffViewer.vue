@@ -12,6 +12,7 @@ const { t } = useI18n()
 const props = defineProps<{
   diff: SkillDiff
   target: string
+  loadFileContent?: (filePath: string) => Promise<DiffFileContent>
 }>()
 
 const emit = defineEmits<{
@@ -65,11 +66,13 @@ async function handleFileClick(row: FileDiff) {
   selectedFile.value = row.path
   loadingContent.value = true
   try {
-    const result = await invoke<DiffFileContent>('get_diff_file_content', {
-      skillName: props.diff.skillName,
-      filePath: row.path,
-      target: props.target,
-    })
+    const result = props.loadFileContent
+      ? await props.loadFileContent(row.path)
+      : await invoke<DiffFileContent>('get_diff_file_content', {
+          skillName: props.diff.skillName,
+          filePath: row.path,
+          target: props.target,
+        })
     computeDiffLines(result)
   } catch {
     diffLines.value = []
@@ -79,8 +82,8 @@ async function handleFileClick(row: FileDiff) {
 }
 
 function computeDiffLines(result: DiffFileContent) {
-  const local = result.localContent ?? ''
-  const remote = result.remoteContent ?? ''
+  const local = result.local_content ?? ''
+  const remote = result.remote_content ?? ''
   const changes = Diff.diffLines(local, remote)
 
   const lines: DiffLine[] = []

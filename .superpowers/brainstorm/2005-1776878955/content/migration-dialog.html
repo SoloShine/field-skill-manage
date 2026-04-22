@@ -1,0 +1,125 @@
+<h2>Skill 迁移弹窗 — 布局方案</h2>
+<p class="subtitle">点击选择你觉得合适的布局方式</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">方案 A: 向导式分步</div>
+        <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+          <div style="display:flex; gap:12px; margin-bottom:16px;">
+            <div style="flex:1; padding:8px 12px; border-radius:6px; background:var(--accent-bg, #e8f4fd); border:2px solid var(--accent, #4a9eff);">
+              <strong>Step 1</strong><br>选择源 Agent
+            </div>
+            <div style="flex:1; padding:8px 12px; border-radius:6px; background:var(--bg-secondary, #f0f0f0); color:var(--text-muted, #888);">
+              <strong>Step 2</strong><br>选择 Skills
+            </div>
+            <div style="flex:1; padding:8px 12px; border-radius:6px; background:var(--bg-secondary, #f0f0f0); color:var(--text-muted, #888);">
+              <strong>Step 3</strong><br>确认迁移
+            </div>
+          </div>
+          <div style="border:1px solid #ddd; border-radius:8px; padding:16px;">
+            <div class="mock-select" style="margin-bottom:12px;">
+              <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">源 Agent</label>
+              <div style="padding:8px; border:1px solid #ccc; border-radius:4px; background:#fff;">Cursor → ~/.cursor/skills</div>
+            </div>
+            <div class="mock-select">
+              <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">目标路径</label>
+              <div style="padding:8px; border:1px solid #ccc; border-radius:4px; background:#fff;">Claude Code → ~/.claude/skills</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>向导式分步弹窗</h3>
+      <p>分 3 步引导：选源 Agent → 勾选 Skills → 确认并处理冲突。每步聚焦一个决策，清晰不易出错。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>逐步引导，不易遗漏</li><li>冲突处理可在第 3 步集中展示</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>步骤多，操作路径长</li><li>弹窗内容需切换</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">方案 B: 单页全览</div>
+        <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+          <div style="display:flex; gap:12px; margin-bottom:16px; align-items:center;">
+            <div style="flex:1; padding:6px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; font-size:12px;">
+              源: Cursor
+            </div>
+            <div style="color:#4a9eff; font-size:18px;">→</div>
+            <div style="flex:1; padding:6px 10px; border:1px solid #ccc; border-radius:4px; background:#fff; font-size:12px;">
+              目标: Claude Code
+            </div>
+          </div>
+          <div style="border:1px solid #ddd; border-radius:6px; overflow:hidden;">
+            <div style="background:#f5f5f5; padding:8px 12px; display:flex; justify-content:space-between; font-size:12px; border-bottom:1px solid #ddd;">
+              <span><input type="checkbox" checked> 全选 (5 Skills)</span>
+              <span style="color:#888;">发现 5 个 Skill</span>
+            </div>
+            <div style="padding:4px 0;">
+              <div style="padding:8px 12px; display:flex; align-items:center; gap:8px; border-bottom:1px solid #f0f0f0;">
+                <input type="checkbox" checked>
+                <span style="flex:1;">📄 docx <span style="color:#888; font-size:11px;">v1.2.0</span></span>
+                <span style="font-size:11px; padding:2px 6px; border-radius:3px; background:#e8f8e8; color:#2d8a2d;">新增</span>
+              </div>
+              <div style="padding:8px 12px; display:flex; align-items:center; gap:8px; border-bottom:1px solid #f0f0f0;">
+                <input type="checkbox" checked>
+                <span style="flex:1;">📄 pdf <span style="color:#888; font-size:11px;">v2.0.0 → v1.8.0</span></span>
+                <span style="font-size:11px; padding:2px 6px; border-radius:3px; background:#fff3cd; color:#856404;">⚠ 版本不同</span>
+              </div>
+              <div style="padding:8px 12px; display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" checked>
+                <span style="flex:1;">📄 xlsx <span style="color:#888; font-size:11px;">v1.0.0</span></span>
+                <span style="font-size:11px; padding:2px 6px; border-radius:3px; background:#e8f8e8; color:#2d8a2d;">新增</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>单页全览弹窗</h3>
+      <p>顶部选源/目标 Agent，下方一次展示所有可迁移 Skill，支持全选/单选，冲突状态用标签标注。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>一屏看清所有信息和决策</li><li>操作快，勾选即完成</li><li>实现简单，复用现有组件</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Skill 多时弹窗可能较长</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">方案 C: 拖拽面板</div>
+        <div class="mockup-body" style="padding: 16px; font-size: 13px;">
+          <div style="display:flex; gap:16px; min-height:200px;">
+            <div style="flex:1; border:2px dashed #ccc; border-radius:8px; padding:12px;">
+              <div style="font-size:12px; color:#888; margin-bottom:8px;">📂 Cursor Skills (源)</div>
+              <div style="padding:6px 8px; border:1px solid #eee; border-radius:4px; margin-bottom:4px; background:#fff; cursor:grab;">📄 docx</div>
+              <div style="padding:6px 8px; border:1px solid #eee; border-radius:4px; margin-bottom:4px; background:#fff; cursor:grab;">📄 pdf</div>
+              <div style="padding:6px 8px; border:1px solid #eee; border-radius:4px; background:#fff; cursor:grab;">📄 xlsx</div>
+            </div>
+            <div style="display:flex; align-items:center; font-size:24px; color:#4a9eff;">→</div>
+            <div style="flex:1; border:2px dashed #4a9eff; border-radius:8px; padding:12px; background:rgba(74,158,255,0.05);">
+              <div style="font-size:12px; color:#888; margin-bottom:8px;">📂 Claude Code Skills (目标)</div>
+              <div style="padding:6px 8px; border:1px solid #ddd; border-radius:4px; margin-bottom:4px; background:#f9f9f9;">📄 code-review <span style="font-size:10px; color:#888;">已有</span></div>
+              <div style="color:#aaa; text-align:center; padding:20px 0; font-size:12px;">拖拽 Skill 到此处</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>拖拽面板</h3>
+      <p>左右双栏布局，左栏展示源 Agent Skills，右栏展示目标。支持拖拽或点击添加。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>交互直观，所见即所得</li><li>双栏对比清晰</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>拖拽实现复杂度高</li><li>冲突提示不好融入</li><li>批量操作不如勾选方便</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
