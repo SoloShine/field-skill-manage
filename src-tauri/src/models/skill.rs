@@ -263,3 +263,45 @@ pub struct ProjectDetailData {
     pub comparisons: Vec<SkillComparison>,
     pub skillbase: Option<SkillbaseResolution>,
 }
+
+// --- Migration types ---
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub enum MigrateConflictStatus {
+    NewTarget,
+    SameContent,
+    DifferentVersion,
+    ContentDiffers,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MigrateSkillEntry {
+    pub name: String,
+    pub version: String,
+    pub description: String,
+    pub path: String,
+    pub conflict_status: MigrateConflictStatus,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ScanAgentSkillsResult {
+    pub agent_id: String,
+    pub agent_display_name: String,
+    pub source_dir: String,
+    pub skills: Vec<MigrateSkillEntry>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub enum ConflictResolution {
+    Skip,
+    Overwrite,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MigrateResult {
+    pub migrated: Vec<String>,
+    pub skipped: Vec<String>,
+    pub failed: Vec<(String, String)>,
+}
