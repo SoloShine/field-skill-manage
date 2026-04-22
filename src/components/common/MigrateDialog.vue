@@ -75,6 +75,18 @@ const summaryCounts = computed(() => {
   }
 })
 
+// Reset all local state when dialog opens
+watch(() => skillStore.migrateDialogVisible, (visible) => {
+  if (visible) {
+    currentStep.value = 1
+    selectedAgentId.value = null
+    selectedSkills.value = new Set()
+    conflictResolutions.value = {}
+    diffSkillName.value = null
+    diffData.value = null
+  }
+})
+
 watch(selectedAgentId, async (newId) => {
   if (!newId) return
   currentStep.value = 1
