@@ -27,7 +27,9 @@ const sourceAgents = computed(() => {
 
   for (const [id, globalPath] of Object.entries(agents)) {
     if (id === activeId) continue
-    const displayName = configStore.getAgentDisplayName(id)
+    const displayName = configStore.config.agent_display_names[id]
+      || configStore.allAgents.find(a => a.id === id)?.display_name
+      || id
     const pathPreview = skillStore.migrateScope === 'project'
       ? (configStore.config.agent_project_patterns[id] || '').replace('{project}', '...')
       : globalPath
@@ -311,7 +313,7 @@ function statusBadgeText(status: string) {
         @update:show="(v: boolean) => { if (!v) diffSkillName = null }"
       >
         <NSpin :show="diffLoading">
-          <SkillDiffViewer v-if="diffData" :diff="diffData" />
+          <SkillDiffViewer v-if="diffData" :diff="diffData" target="migration" />
           <div v-else-if="!diffLoading" class="empty-hint">{{ t('diff.noContent') }}</div>
         </NSpin>
       </NModal>
