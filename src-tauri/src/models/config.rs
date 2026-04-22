@@ -157,6 +157,19 @@ impl AppConfig {
         }
     }
 
+    /// Migrate OpenCode global path from old default (~/.opencode/skills)
+    /// to correct path (~/.config/opencode/skills)
+    pub fn migrate_opencode_path(&mut self) {
+        let home = dirs_home();
+        let old_path = format!("{}/.opencode/skills", home);
+        let new_path = AgentType::OpenCode.default_global_dir(&home);
+        if let Some(path) = self.agent_global_paths.get_mut("opencode") {
+            if *path == old_path {
+                *path = new_path;
+            }
+        }
+    }
+
     /// Resolve the global skill path for the active agent
     pub fn active_global_path(&self) -> String {
         self.agent_global_paths

@@ -82,6 +82,7 @@ fn save_config_to_disk(path: &str, config: &AppConfig) -> Result<(), String> {
 pub fn get_config(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
     let mut config = state.config.lock().map_err(|e| e.to_string())?;
     config.migrate_repos();
+    config.migrate_opencode_path();
     Ok(config.clone())
 }
 
@@ -200,6 +201,7 @@ pub fn import_config(state: tauri::State<'_, AppState>, file_path: String) -> Re
 
     resolve_portable(&mut config);
     config.migrate_repos();
+    config.migrate_opencode_path();
 
     // Save and apply
     save_config_to_disk(&state.config_path, &config)?;
